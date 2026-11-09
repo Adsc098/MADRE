@@ -1158,6 +1158,56 @@
                   </button>
                 </div>
               </div>
+
+              <!-- Cloud Database & Multi-User Card -->
+              <div class="glass-card rounded-3xl p-6">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-base font-bold text-stone-900 flex items-center gap-2">
+                    <span>☁️ Base de Datos en la Nube (Multi-Usuario)</span>
+                  </h3>
+                  <span id="dbModeBadge" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                    Modo Local
+                  </span>
+                </div>
+                <p class="text-xs text-stone-600 mt-1">
+                  Arquitectura multi-usuario para Google Firebase Firestore. Cada docente cuenta con sus propios grupos, alumnos y calificaciones protegidos bajo su cuenta.
+                </p>
+
+                <div class="mt-3.5 space-y-2.5 text-xs bg-stone-900/5 p-3.5 rounded-2xl border border-stone-200">
+                  <div class="flex items-center justify-between text-stone-700">
+                    <span class="font-semibold">Docente Activo:</span>
+                    <span id="dbActiveTeacherLabel" class="font-bold text-stone-900">Profra. Claudia Chavarría</span>
+                  </div>
+                  <div class="flex items-center justify-between text-stone-700">
+                    <span class="font-semibold">Grupo Asignado:</span>
+                    <span id="dbActiveGroupLabel" class="font-bold text-stone-900">6° A (2026-2027)</span>
+                  </div>
+                  <div class="flex items-center justify-between text-stone-700">
+                    <span class="font-semibold">Estado de Conexión:</span>
+                    <span id="dbSyncStatusText" class="font-semibold text-emerald-700">✓ Guardado local activo (Offline)</span>
+                  </div>
+                </div>
+
+                <div class="mt-4 flex flex-wrap items-center gap-2">
+                  <button
+                    id="btnOpenCloudConfigModal"
+                    type="button"
+                    class="px-4 py-2 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold shadow transition"
+                  >
+                    ⚙️ Configurar Claves de Firebase
+                  </button>
+                  <a
+                    href="https://console.firebase.google.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="px-3.5 py-2 rounded-full bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 text-xs font-semibold transition inline-flex items-center gap-1.5"
+                  >
+                    <span>Abrir Consola Firebase</span>
+                    <span class="text-[10px]">↗</span>
+                  </a>
+                </div>
+              </div>
+
             </div>
 
           </div>
@@ -1332,6 +1382,52 @@
     </div>
   </div>
 
+
+  <!-- Modal: Configuración de Firebase Cloud DB -->
+  <div id="cloudConfigModal" class="hidden fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-xl flex items-center justify-center p-4">
+    <div class="glass-card bg-stone-100/95 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-white text-left">
+      <div class="flex items-center justify-between pb-3 border-b border-stone-300">
+        <div>
+          <h3 class="text-base font-extrabold text-stone-900">Conectar Base de Datos en la Nube</h3>
+          <p class="text-xs text-stone-600">Google Firebase Firestore (Multi-Usuario)</p>
+        </div>
+        <button id="closeCloudModalBtn" type="button" class="w-8 h-8 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold text-sm">✕</button>
+      </div>
+
+      <p class="text-xs text-stone-700 mt-3">
+        Ingresa las claves de tu proyecto Firebase (o edita directamente el archivo <code>js/firebase-config.js</code>). Los datos se sincronizarán en tiempo real entre múltiples dispositivos.
+      </p>
+
+      <form id="cloudConfigForm" class="mt-4 space-y-2.5 text-xs">
+        <div>
+          <label for="fbApiKeyInput" class="block font-bold text-stone-700 mb-0.5">API Key</label>
+          <input id="fbApiKeyInput" type="text" placeholder="AIzaSy..." class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 font-mono text-[11px]" />
+        </div>
+        <div>
+          <label for="fbProjectIdInput" class="block font-bold text-stone-700 mb-0.5">Project ID</label>
+          <input id="fbProjectIdInput" type="text" placeholder="sicep-calificaciones" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 font-mono text-[11px]" />
+        </div>
+        <div>
+          <label for="fbAuthDomainInput" class="block font-bold text-stone-700 mb-0.5">Auth Domain</label>
+          <input id="fbAuthDomainInput" type="text" placeholder="sicep-calificaciones.firebaseapp.com" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 font-mono text-[11px]" />
+        </div>
+        <div>
+          <label for="fbAppIdInput" class="block font-bold text-stone-700 mb-0.5">App ID</label>
+          <input id="fbAppIdInput" type="text" placeholder="1:123456789012:web:abcdef..." class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 font-mono text-[11px]" />
+        </div>
+
+        <div class="pt-3 flex items-center justify-end gap-2">
+          <button id="btnCancelCloudConfig" type="button" class="px-4 py-2 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-semibold">
+            Cancelar
+          </button>
+          <button type="submit" class="px-5 py-2 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold shadow">
+            Guardar y Conectar Nube
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Floating Toast Notification -->
   <div id="toastNotification" class="fixed top-20 right-5 z-50 hidden transform transition-all duration-300">
     <div class="glass-card-espresso rounded-2xl px-4 py-3 shadow-2xl flex items-center gap-2.5 text-xs border border-white/25">
@@ -1344,6 +1440,12 @@
   <!-- APPLICATION LOGIC (Architecture: Data Store, Calculation Engine,      -->
   <!--                    UI Renderer, Excel/PDF Generators)                 -->
   <!-- ===================================================================== -->
+  <!-- Firebase SDKs (Multi-User Cloud Database) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/db.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
