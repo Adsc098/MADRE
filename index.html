@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SICEP · Sistema Web de Gestión y Captura de Calificaciones Escolares</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="antialiased selection:bg-stone-800 selection:text-stone-100">
+
+  <!-- Ambient Blur Backdrop -->
+  <div class="ambient-backdrop">
+    <div class="ambient-orb-1"></div>
+    <div class="ambient-orb-2"></div>
+    <div class="ambient-blinds"></div>
+  </div>
+
+  <!-- Main Wrapper -->
+  <div class="relative z-10 min-h-screen flex flex-col px-3 sm:px-5 pt-3 pb-20 max-w-[1600px] mx-auto gap-3.5">
+
+    <!-- 1. TOP SPATIAL BAR (Header) -->
+    <header class="spatial-topbar rounded-full px-3 sm:px-5 py-2.5 flex items-center justify-between gap-3 text-white">
+      <!-- Teacher Profile & System Name -->
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="relative flex-shrink-0">
+          <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-stone-900 via-stone-700 to-amber-200 p-0.5 shadow-md">
+            <div class="w-full h-full rounded-full bg-stone-900 flex items-center justify-center text-amber-100 font-bold text-sm tracking-tight" id="headerAvatarInitials">
+              CC
+            </div>
+          </div>
+          <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-stone-900" title="Sesión activa y sincronizada"></span>
+        </div>
+        <div class="truncate">
+          <div class="flex items-center gap-2">
+            <span class="text-xs uppercase tracking-widest text-amber-200/90 font-semibold">SICEP · 6° "A"</span>
+            <span class="hidden md:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-white/15 text-stone-100 border border-white/20" id="headerCycleBadge">
+              2026 - 2027
+            </span>
+          </div>
+          <p class="text-sm sm:text-base font-medium text-white truncate" id="headerTeacherName">
+            Bienvenida, Profra. Claudia Chavarría Ramírez
+          </p>
+        </div>
+      </div>
+
+      <!-- Center Global Search Pill -->
+      <div class="flex-1 max-w-md mx-2 hidden sm:block">
+        <div class="relative flex items-center">
+          <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-emerald-400 via-teal-300 to-amber-200 flex items-center justify-center ml-2 mr-2 flex-shrink-0 shadow-inner">
+            <svg class="w-3.5 h-3.5 text-stone-900" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.5 10.5a7.5 7.5 0 0013.15 6.15z"/>
+            </svg>
+          </div>
+          <input
+            id="globalSearchInput"
+            type="text"
+            placeholder="Buscar alumno por nombre o número de lista (ej. Acosta, 14)..."
+            class="w-full bg-stone-950/35 hover:bg-stone-950/45 focus:bg-stone-950/60 text-white placeholder-stone-300/80 text-xs sm:text-sm rounded-full py-2 pl-2 pr-8 border border-white/15 focus:outline-none focus:border-white/40 transition"
+          />
+          <button
+            id="clearGlobalSearchBtn"
+            type="button"
+            title="Limpiar búsqueda"
+            class="hidden absolute right-2.5 text-stone-300 hover:text-white text-xs"
+          >✕</button>
+        </div>
+      </div>
+
+      <!-- Right Status, Save Indicator, Quick Export & Notifications -->
+      <div class="flex items-center gap-2">
+        <!-- Auto-save status pill -->
+        <div id="saveStatusPill" class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-950/35 border border-white/15 text-xs text-stone-100">
+          <span id="saveStatusDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span id="saveStatusText">Guardado automático</span>
+        </div>
+
+        <!-- Period Selector Pill -->
+        <div class="flex items-center bg-stone-950/40 border border-white/20 rounded-full px-2.5 py-1 text-xs">
+          <span class="text-stone-300 mr-1.5 hidden xl:inline">Periodo:</span>
+          <select id="globalPeriodSelect" aria-label="Seleccionar periodo de evaluación" class="bg-transparent text-white font-semibold focus:outline-none cursor-pointer pr-1">
+            <option value="DIAGNOSTICO" class="text-stone-900">Diagnóstico</option>
+            <option value="TRIMESTRE_1" class="text-stone-900">Trimestre 1</option>
+            <option value="TRIMESTRE_2" class="text-stone-900">Trimestre 2</option>
+            <option value="TRIMESTRE_3" class="text-stone-900">Trimestre 3</option>
+          </select>
+        </div>
+
+        <!-- Notifications Button -->
+        <div class="relative">
+          <button
+            id="notificationsBtn"
+            type="button"
+            title="Notificaciones y alertas académicas"
+            class="w-10 h-10 rounded-full bg-white text-stone-900 flex items-center justify-center shadow-md hover:bg-stone-100 transition relative"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+            <span id="notifBadgeCount" class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center">
+              3
+            </span>
+          </button>
+
+          <!-- Notifications Popover -->
+          <div id="notificationsPopover" class="hidden absolute right-0 mt-2 w-80 sm:w-96 glass-card rounded-2xl p-4 shadow-2xl border border-white/80 text-stone-800 z-50">
+            <div class="flex items-center justify-between pb-2.5 mb-2.5 border-b border-stone-300/60">
+              <h4 class="font-bold text-sm text-stone-900">Avisos del Sistema</h4>
+              <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-stone-800 text-stone-100" id="notifPopoverSubtitle">Estado actual</span>
+            </div>
+            <div id="notificationsList" class="space-y-2.5 max-h-72 overflow-y-auto text-xs"></div>
+          </div>
+        </div>
+
+        <!-- Lock / Security Session Button -->
+        <button
+          id="lockSessionBtn"
+          type="button"
+          title="Bloquear pantalla (Acceso docente protegido)"
+          class="w-10 h-10 rounded-full bg-stone-900/75 hover:bg-stone-900 text-amber-100 border border-white/25 flex items-center justify-center shadow-md transition"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Mobile Search Input -->
+    <div class="sm:hidden">
+      <input
+        id="mobileSearchInput"
+        type="text"
+        placeholder="Buscar alumno por nombre o No. de lista..."
+        class="w-full glass-card rounded-full px-4 py-2 text-xs text-stone-900 placeholder-stone-600 focus:outline-none"
+      />
+    </div>
+
+    <!-- 2. MAIN WORKSPACE AREA (Left Spatial Sidebar + Main Frosted Glass Window) -->
+    <div class="flex-1 flex flex-col lg:flex-row gap-3.5 items-stretch">
+
+      <!-- LEFT VERTICAL SPATIAL SIDEBAR -->
+      <aside class="spatial-sidebar rounded-3xl lg:rounded-full py-3 px-2.5 flex lg:flex-col items-center justify-between gap-2 lg:w-16 flex-shrink-0 self-center lg:self-stretch">
+        <div class="flex lg:flex-col items-center gap-2 w-full justify-around lg:justify-start">
+          <!-- 1. Inicio -->
+          <button
+            type="button"
+            data-nav="inicio"
+            class="nav-item-btn nav-btn-active group relative w-11 h-11 rounded-full flex items-center justify-center text-white/90 hover:bg-white/25 transition"
+            title="1. Inicio (Dashboard Principal)"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 10.5L12 3l9 7.5V20a1 1 0 01-1 1h-5.5v-6.5h-5V21H4a1 1 0 01-1-1v-9.5z"/>
+            </svg>
+            <span class="hidden lg:group-hover:block absolute left-14 bg-white text-stone-900 text-xs font-semibold px-2.5 py-1 rounded-lg shadow-lg whitespace-nowrap z-50 pointer-events-none">
+              Inicio
+            </span>
+          </button>
+
+          <!-- 2. Alumnos -->
+          <button
+            type="button"
+            data-nav="alumnos"
+            class="nav-item-btn group relative w-11 h-11 rounded-full flex items-center justify-center text-white/90 hover:bg-white/25 transition"
+            title="2. Gestión de Alumnos"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span class="hidden lg:group-hover:block absolute left-14 bg-white text-stone-900 text-xs font-semibold px-2.5 py-1 rounded-lg shadow-lg whitespace-nowrap z-50 pointer-events-none">
+              Alumnos
+            </span>
+          </button>
+
+          <!-- 3. Captura de calificaciones -->
+          <button
+            type="button"
+            data-nav="captura"
+            class="nav-item-btn group relative w-11 h-11 rounded-full flex items-center justify-center text-white/90 hover:bg-white/25 transition"
+            title="3. Captura de Calificaciones (Campos Formativos)"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+            <span class="hidden lg:group-hover:block absolute left-14 bg-white text-stone-900 text-xs font-semibold px-2.5 py-1 rounded-lg shadow-lg whitespace-nowrap z-50 pointer-events-none">
+              Captura de calificaciones
+            </span>
+          </button>
+
+          <!-- 4. Evaluaciones (Ponderación 100%) -->
+          <button
+            type="button"
+            data-nav="evaluaciones"
+            class="nav-item-btn group relative w-11 h-11 rounded-full flex items-center justify-center text-white/90 hover:bg-white/25 transition"
+            title="4. Evaluaciones (Control Ponderado 100%)"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <span class="hidden lg:group-hover:block absolute left-14 bg-white text-stone-900 text-xs font-semibold px-2.5 py-1 rounded-lg shadow-lg whitespace-nowrap z-50 pointer-events-none">
+              Evaluaciones (Ponderación)
+            </span>
+          </button>
+
+          <!-- 5. Reportes (Excel & PDF) -->
+          <button
+            type="button"
+            data-nav="reportes"
+            class="nav-item-btn group relative w-11 h-11 rounded-full flex items-center justify-center text-white/90 hover:bg-white/25 transition"
+            title="5. Reportes (Descargar Excel y Generar PDF)"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <span class="hidden lg:group-hover:block absolute left-14 bg-white text-stone-900 text-xs font-semibold px-2.5 py-1 rounded-lg shadow-lg whitespace-nowrap z-50 pointer-events-none">
+              Reportes (Excel y PDF)
+            </span>
+          </button>
+
+          <!-- 6. Configuración -->
+          <button
+            type="button"
+            data-nav="configuracion"
+            class="nav-item-btn group relative w-11 h-11 rounded-full flex items-center justify-center text-white/90 hover:bg-white/25 transition"
+            title="6. Configuración y Respaldo"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span class="hidden lg:group-hover:block absolute left-14 bg-white text-stone-900 text-xs font-semibold px-2.5 py-1 rounded-lg shadow-lg whitespace-nowrap z-50 pointer-events-none">
+              Configuración
+            </span>
+          </button>
+        </div>
+
+        <!-- Quick Conversion Table Button at Bottom of Sidebar -->
+        <div class="hidden lg:flex flex-col items-center gap-2 pt-2 border-t border-white/20">
+          <button
+            id="openConversionModalBtn"
+            type="button"
+            title="Ver Tablas de Conversión Rápida por Rubro (Hoja 3 del Excel)"
+            class="w-10 h-10 rounded-full bg-stone-900/40 hover:bg-stone-900/70 text-amber-100 flex items-center justify-center transition"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+          </button>
+        </div>
+      </aside>
+
+      <!-- MAIN GLASSMORPHISM CANVAS PANEL -->
+      <main class="spatial-canvas flex-1 rounded-[32px] p-4 sm:p-6 lg:p-7 flex flex-col gap-5 overflow-hidden">
+
+        <!-- TOP CONTEXT HEADER INSIDE CANVAS + GLOBAL ACTION BUTTONS -->
+        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-3 border-b border-stone-800/10">
+          <div>
+            <div class="flex flex-wrap items-center gap-2 text-xs font-semibold text-stone-700 uppercase tracking-wider">
+              <span id="schoolHeaderLine">ESCUELA PRIMARIA FEDERAL SALVADOR ZUBIRAN ANCHONDO T. M.</span>
+              <span>•</span>
+              <span id="cctHeaderLine">C.C.T. 19DPR1719T · ZONA 114 · REGIÓN 6</span>
+            </div>
+            <h1 id="sectionMainTitle" class="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight mt-0.5">
+              Panel General · 6° "A"
+            </h1>
+            <p id="sectionSubTitle" class="text-xs sm:text-sm text-stone-700">
+               Monitoreo académico en tiempo real, evaluación formativa y control ponderado del grupo.
+            </p>
+          </div>
+
+          <!-- Always-Accessible Primary Action Buttons (Descargar Excel, Generar PDF, Guardar) -->
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button
+              id="manualSaveBtn"
+              type="button"
+              class="px-3.5 py-2.5 rounded-full bg-white/80 hover:bg-white text-stone-900 font-semibold text-xs border border-white shadow-sm flex items-center gap-1.5 transition"
+            >
+              <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span>Guardar Cambios</span>
+            </button>
+
+            <button
+              id="topDownloadExcelBtn"
+              type="button"
+              class="px-4 py-2.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md flex items-center gap-2 transition"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              <span>DESCARGAR EXCEL</span>
+            </button>
+
+            <button
+              id="topGeneratePdfBtn"
+              type="button"
+              class="px-4 py-2.5 rounded-full bg-stone-900 hover:bg-stone-950 text-amber-50 font-bold text-xs shadow-md flex items-center gap-2 transition"
+            >
+              <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+              </svg>
+              <span>GENERAR PDF</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- SECTION 1: INICIO (DASHBOARD PRINCIPAL)                             -->
+        <!-- =================================================================== -->
+        <section id="view-inicio" class="animate-view space-y-5">
+          <!-- Top Bento Row: Group Summary Card + 4 KPI Cards + Quick Highlights -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+            <!-- Left Master Card (Inspired by "Total Balance" card in reference) -->
+            <div class="lg:col-span-5 glass-card rounded-3xl p-5 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold uppercase tracking-wider text-stone-600">Promedio General del Grupo</span>
+                  <span id="dashPeriodTag" class="px-2.5 py-1 rounded-full bg-stone-900/10 text-stone-800 font-semibold text-xs">
+                    Diagnóstico 2026-2027
+                  </span>
+                </div>
+                <div class="mt-2 flex items-baseline gap-3">
+                  <span id="kpiGroupAverage" class="text-4xl sm:text-5xl font-extrabold text-stone-900 tracking-tight">7.80</span>
+                  <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300" id="kpiApprovalRateBadge">
+                    85.7% Aprobación
+                  </span>
+                </div>
+                <p class="text-xs text-stone-600 mt-1" id="kpiAverageSubtitle">
+                  Calculado sobre los 4 Campos Formativos y el Control de Evaluación Ponderada (escala 0 a 10).
+                </p>
+
+                <!-- Quick Action Pill Buttons inside Master Card -->
+                <div class="grid grid-cols-2 gap-2.5 mt-4">
+                  <button
+                    type="button"
+                    data-goto="captura"
+                    class="quick-nav-btn py-2.5 px-3 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow transition"
+                  >
+                    <span>✎ Capturar Campos</span>
+                  </button>
+                  <button
+                    type="button"
+                    data-goto="evaluaciones"
+                    class="quick-nav-btn py-2.5 px-3 rounded-full bg-white hover:bg-stone-50 text-stone-900 border border-stone-300 text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition"
+                  >
+                    <span>⚖ Control Ponderado</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Sub-wallets style mini-cards for Gender & Group breakdown from Excel -->
+              <div class="mt-5 pt-4 border-t border-stone-300/60">
+                <div class="flex items-center justify-between text-xs text-stone-600 mb-2">
+                  <span class="font-semibold text-stone-800">Matrícula Oficial · 6° "A"</span>
+                  <span id="kpiGenderSummaryText">Hombres: 13 · Mujeres: 22</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="bg-white/80 rounded-2xl p-2.5 border border-white">
+                    <span class="text-[11px] text-stone-500 block">Total Alumnos</span>
+                    <span id="kpiTotalStudents" class="text-lg font-bold text-stone-900">35</span>
+                    <span class="text-[10px] text-emerald-700 font-semibold block">Activos en lista</span>
+                  </div>
+                  <div class="bg-white/80 rounded-2xl p-2.5 border border-white">
+                    <span class="text-[11px] text-stone-500 block">Con Captura</span>
+                    <span id="kpiCapturedCount" class="text-lg font-bold text-stone-900">35</span>
+                    <span id="kpiCapturedSub" class="text-[10px] text-emerald-700 font-semibold block">Campos completos</span>
+                  </div>
+                  <div class="bg-white/80 rounded-2xl p-2.5 border border-white">
+                    <span class="text-[11px] text-stone-500 block">Eval. Ponderada</span>
+                    <span id="kpiWeightedCapturedCount" class="text-lg font-bold text-stone-900">5 / 35</span>
+                    <span id="kpiPendingCountSub" class="text-[10px] text-amber-700 font-semibold block">30 pendientes</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Middle 2x2 KPI Grid (Inspired by Emerald + Frosted White cards in reference) -->
+            <div class="lg:col-span-4 grid grid-cols-2 gap-3.5">
+              <!-- Card 1: Emerald Highlight - Calificación más alta -->
+              <div class="glass-card-emerald rounded-3xl p-4 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-medium text-emerald-50">Calificación Más Alta</span>
+                  <span class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">★</span>
+                </div>
+                <div class="my-2">
+                  <div id="kpiHighestScore" class="text-3xl font-extrabold tracking-tight">9.50</div>
+                  <p id="kpiHighestStudent" class="text-[11px] text-emerald-100 truncate mt-0.5 font-medium">
+                    AGUILAR CRISTERNA ARELI LUCIA
+                  </p>
+                </div>
+                <span class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/20 text-white w-max">
+                  Excelencia Académica
+                </span>
+              </div>
+
+              <!-- Card 2: Calificación más baja -->
+              <div class="glass-card rounded-3xl p-4 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold text-stone-600">Calificación Más Baja</span>
+                  <span class="w-7 h-7 rounded-full bg-amber-500/15 text-amber-800 flex items-center justify-center text-xs font-bold">!</span>
+                </div>
+                <div class="my-2">
+                  <div id="kpiLowestScore" class="text-3xl font-extrabold text-stone-900 tracking-tight">5.50</div>
+                  <p id="kpiLowestStudent" class="text-[11px] text-stone-600 truncate mt-0.5 font-medium">
+                    BARRAZA GONZALEZ EDUARDO
+                  </p>
+                </div>
+                <span class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 w-max">
+                  Requiere apoyo
+                </span>
+              </div>
+
+              <!-- Card 3: Alumnos con calificaciones capturadas -->
+              <div class="glass-card rounded-3xl p-4 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold text-stone-600">Alumnos Capturados</span>
+                  <span class="w-7 h-7 rounded-full bg-emerald-600/15 text-emerald-800 flex items-center justify-center text-xs font-bold">✓</span>
+                </div>
+                <div class="my-2">
+                  <div id="kpiCapturedCardVal" class="text-3xl font-extrabold text-stone-900 tracking-tight">35</div>
+                  <p class="text-[11px] text-stone-600 mt-0.5">De 35 registrados en 6° A</p>
+                </div>
+                <span id="kpiCapturedPctBadge" class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 w-max">
+                  100% Campos Formativos
+                </span>
+              </div>
+
+              <!-- Card 4: Evaluaciones pendientes -->
+              <div class="glass-card-espresso rounded-3xl p-4 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-medium text-stone-300">Eval. Pendientes</span>
+                  <span class="w-7 h-7 rounded-full bg-white/15 text-amber-300 flex items-center justify-center text-xs font-bold">⏳</span>
+                </div>
+                <div class="my-2">
+                  <div id="kpiPendingCardVal" class="text-3xl font-extrabold text-white tracking-tight">30</div>
+                  <p id="kpiPendingCardDesc" class="text-[11px] text-stone-300 mt-0.5">En hoja de Control Ponderado</p>
+                </div>
+                <button
+                  type="button"
+                  data-goto="evaluaciones"
+                  class="quick-nav-btn text-left text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-200 hover:bg-amber-400/30 w-max transition"
+                >
+                  Completar rúbrica →
+                </button>
+              </div>
+            </div>
+
+            <!-- Right Column: Rendimiento por Campo Formativo Chart -->
+            <div class="lg:col-span-3 glass-card rounded-3xl p-4 flex flex-col justify-between">
+              <div class="flex items-center justify-between mb-1">
+                <div>
+                  <h3 class="text-sm font-bold text-stone-900">Promedio por Campo</h3>
+                  <p class="text-[11px] text-stone-600">Campos Formativos NEM</p>
+                </div>
+                <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-stone-900 text-white">0 - 10</span>
+              </div>
+              <div class="relative h-52 w-full">
+                <canvas id="chartFields"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Second Row of Charts: Distribución de Calificaciones, Promedios del Grupo y Comparación entre Evaluaciones -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div class="lg:col-span-4 glass-card rounded-3xl p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div>
+                  <h3 class="text-sm font-bold text-stone-900">Distribución de Calificaciones</h3>
+                  <p class="text-[11px] text-stone-600">Alumnos por rango de desempeño</p>
+                </div>
+                <span class="text-[11px] font-medium text-stone-500">Grupo 6° A</span>
+              </div>
+              <div class="relative h-56 w-full">
+                <canvas id="chartDistribution"></canvas>
+              </div>
+            </div>
+
+            <div class="lg:col-span-4 glass-card rounded-3xl p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div>
+                  <h3 class="text-sm font-bold text-stone-900">Comparación entre Evaluaciones</h3>
+                  <p class="text-[11px] text-stone-600">Campos Formativos vs Control Ponderado (100%)</p>
+                </div>
+              </div>
+              <div class="relative h-56 w-full">
+                <canvas id="chartComparison"></canvas>
+              </div>
+            </div>
+
+            <div class="lg:col-span-4 glass-card rounded-3xl p-4">
+              <div class="flex items-center justify-between mb-2">
+                <div>
+                  <h3 class="text-sm font-bold text-stone-900">Promedios del Grupo (Top / Seguimiento)</h3>
+                  <p class="text-[11px] text-stone-600">Curva de promedios individuales por No. de lista</p>
+                </div>
+              </div>
+              <div class="relative h-56 w-full">
+                <canvas id="chartStudentTrend"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Third Row: Quick Preview Table of Recent / Highlighted Students -->
+          <div class="glass-card rounded-3xl p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <div>
+                <h3 class="text-base font-bold text-stone-900">Resumen Rápido del Grupo (6° "A")</h3>
+                <p class="text-xs text-stone-600">Vista ejecutiva combinada: Promedio de Campos Formativos y Calificación del Control Ponderado (Hoja 2).</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <select id="dashFilterStatus" aria-label="Filtrar resumen por estatus" class="bg-white/90 border border-stone-300 rounded-full px-3 py-1.5 text-xs font-medium text-stone-800 focus:outline-none">
+                  <option value="ALL">Todos los alumnos (35)</option>
+                  <option value="WEIGHTED_CAPTURED">Con Control Ponderado capturado</option>
+                  <option value="AT_RISK">En riesgo (&lt; 6.0)</option>
+                  <option value="EXCELLENCE">Alto desempeño (≥ 8.5)</option>
+                </select>
+                <button
+                  type="button"
+                  data-goto="captura"
+                  class="quick-nav-btn px-3.5 py-1.5 rounded-full bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 transition"
+                >
+                  Ir a Captura Completa →
+                </button>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto max-h-80">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="border-b border-stone-300/80 text-stone-600 uppercase text-[11px]">
+                    <th class="py-2.5 px-3 font-bold">No.</th>
+                    <th class="py-2.5 px-3 font-bold">Nombre del Alumno</th>
+                    <th class="py-2.5 px-3 font-bold text-center">Lenguajes</th>
+                    <th class="py-2.5 px-3 font-bold text-center">Saberes y P. C.</th>
+                    <th class="py-2.5 px-3 font-bold text-center">Ética, Nat. y Soc.</th>
+                    <th class="py-2.5 px-3 font-bold text-center">De lo Humano y C.</th>
+                    <th class="py-2.5 px-3 font-bold text-center">Prom. Campos</th>
+                    <th class="py-2.5 px-3 font-bold text-center">Control Ponderado (0-10)</th>
+                    <th class="py-2.5 px-3 font-bold text-center">Estatus</th>
+                    <th class="py-2.5 px-3 font-bold text-right">Ficha</th>
+                  </tr>
+                </thead>
+                <tbody id="dashOverviewTableBody" class="divide-y divide-stone-200/70"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- SECTION 2: GESTIÓN DE ALUMNOS                                       -->
+        <!-- =================================================================== -->
+        <section id="view-alumnos" class="hidden animate-view space-y-4">
+          <div class="glass-card rounded-3xl p-5">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 border-b border-stone-300/70">
+              <div>
+                <h2 class="text-lg font-bold text-stone-900">Padrón Oficial de Estudiantes</h2>
+                <p class="text-xs text-stone-600">
+                  Listado oficial importado de <strong>6° A 2026Gm.xlsx</strong> (35 alumnos registrados). Puedes consultar expedientes individuales, registrar nuevos ingresos o importar/exportar desde Excel.
+                </p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button
+                  id="btnOpenNewStudentModal"
+                  type="button"
+                  class="px-4 py-2 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow transition"
+                >
+                  <span>+ Registrar Alumno</span>
+                </button>
+
+                <label for="excelImportInput" class="cursor-pointer px-3.5 py-2 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow transition">
+                  <span>📥 Importar Excel (.xlsx)</span>
+                  <input id="excelImportInput" type="file" accept=".xlsx,.xls,.csv" class="hidden" />
+                </label>
+
+                <button
+                  id="btnExportStudentListExcel"
+                  type="button"
+                  class="px-3.5 py-2 rounded-full bg-white hover:bg-stone-100 text-stone-900 border border-stone-300 text-xs font-semibold flex items-center gap-1.5 transition"
+                >
+                  <span>📤 Exportar Listado</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Filter Bar -->
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 my-4">
+              <div class="sm:col-span-2">
+                <input
+                  id="studentDirectorySearch"
+                  type="text"
+                  placeholder="Buscar por apellidos, nombre o número de lista..."
+                  class="w-full bg-white/90 border border-stone-300 rounded-xl px-3.5 py-2 text-xs text-stone-900 focus:outline-none focus:border-stone-800"
+                />
+              </div>
+              <div>
+                <select id="studentGradeFilter" aria-label="Filtrar por grado y grupo" class="w-full bg-white/90 border border-stone-300 rounded-xl px-3 py-2 text-xs font-medium text-stone-800">
+                  <option value="ALL">Todos los grupos (6° A)</option>
+                  <option value="6° A">6° "A" Matutino</option>
+                  <option value="6° B">6° "B" Matutino</option>
+                </select>
+              </div>
+              <div>
+                <select id="studentGenderFilter" aria-label="Filtrar por género" class="w-full bg-white/90 border border-stone-300 rounded-xl px-3 py-2 text-xs font-medium text-stone-800">
+                  <option value="ALL">Hombres y Mujeres</option>
+                  <option value="M">Mujeres</option>
+                  <option value="H">Hombres</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Student Directory Table -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="border-b border-stone-300 text-stone-600 uppercase text-[11px] bg-stone-900/5">
+                    <th class="py-3 px-3 font-bold">No. Lista</th>
+                    <th class="py-3 px-3 font-bold">Nombre Completo del Alumno</th>
+                    <th class="py-3 px-3 font-bold text-center">Grado y Grupo</th>
+                    <th class="py-3 px-3 font-bold text-center">Género</th>
+                    <th class="py-3 px-3 font-bold text-center">Prom. Campos</th>
+                    <th class="py-3 px-3 font-bold text-center">Calif. Ponderada</th>
+                    <th class="py-3 px-3 font-bold text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="studentDirectoryTableBody" class="divide-y divide-stone-200/70"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- SECTION 3: CAPTURA DE CALIFICACIONES (CAMPOS FORMATIVOS)            -->
+        <!-- =================================================================== -->
+        <section id="view-captura" class="hidden animate-view space-y-4">
+          <div class="glass-card rounded-3xl p-5">
+            <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pb-4 border-b border-stone-300/70">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-0.5 rounded-full bg-emerald-800 text-white text-[11px] font-bold uppercase">Hoja: EXAMENES / sistema2</span>
+                  <span class="text-xs text-stone-600 font-medium">Captura directa en tabla · Escala 0 a 10</span>
+                </div>
+                <h2 class="text-lg font-bold text-stone-900 mt-1">Captura de Calificaciones por Campo Formativo</h2>
+                <p class="text-xs text-stone-600">
+                  Edita directamente las celdas en color crema. El sistema valida el rango (0 a 10) y calcula automáticamente la <strong>SUMA</strong> (<code>=SUM(C:F)</code>) y el <strong>PROMEDIO</strong> (<code>=AVERAGE(G/4)</code>). Usa las teclas <kbd class="px-1.5 py-0.5 bg-stone-200 rounded text-[10px]">Enter</kbd> o flechas para navegar rápidamente entre alumnos.
+                </p>
+              </div>
+
+              <!-- Quick Tools for Captura -->
+              <div class="flex flex-wrap items-center gap-2">
+                <select id="capturaFilterSelect" aria-label="Filtrar alumnos en captura" class="bg-white border border-stone-300 rounded-full px-3 py-2 text-xs font-semibold text-stone-800">
+                  <option value="ALL">Mostrar todos (35)</option>
+                  <option value="PENDING">Solo registros con pendientes</option>
+                  <option value="COMPLETE">Solo registros completos</option>
+                  <option value="REPROBADO">Promedio menor a 6.0</option>
+                </select>
+
+                <button
+                  id="btnSyncWeightedToLenguajes"
+                  type="button"
+                  title="Copiar la calificación final de la Hoja de Control Ponderado al campo seleccionado"
+                  class="px-3.5 py-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 text-xs font-semibold transition"
+                >
+                  ⇄ Vincular desde Control Ponderado
+                </button>
+
+                <button
+                  id="btnFillDemoGrades"
+                  type="button"
+                  title="Rellenar calificaciones pendientes con valores diagnósticos realistas para pruebas o restaurar vacíos"
+                  class="px-3.5 py-2 rounded-full bg-stone-800 hover:bg-stone-900 text-white text-xs font-semibold transition"
+                >
+                  ⚡ Autocompletar Pendientes
+                </button>
+
+                <button
+                  id="btnClearExamsSheet"
+                  type="button"
+                  title="Dejar en 0/vacío como la hoja EXAMENES virgen del archivo Excel original"
+                  class="px-3 py-2 rounded-full bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 text-xs font-semibold transition"
+                >
+                  Restablecer Hoja Virgen
+                </button>
+              </div>
+            </div>
+
+            <!-- Summary Strip for Captura -->
+            <div class="grid grid-cols-2 sm:grid-cols-6 gap-2.5 my-3.5">
+              <div class="bg-white/75 rounded-2xl p-2.5 border border-white">
+                <span class="text-[10px] uppercase font-bold text-stone-500 block">Prom. Lenguajes</span>
+                <span id="capAvgLenguajes" class="text-base font-extrabold text-stone-900">0.00</span>
+              </div>
+              <div class="bg-white/75 rounded-2xl p-2.5 border border-white">
+                <span class="text-[10px] uppercase font-bold text-stone-500 block">Prom. Saberes y P. C.</span>
+                <span id="capAvgSaberes" class="text-base font-extrabold text-stone-900">0.00</span>
+              </div>
+              <div class="bg-white/75 rounded-2xl p-2.5 border border-white">
+                <span class="text-[10px] uppercase font-bold text-stone-500 block">Prom. Ética, Nat. y S.</span>
+                <span id="capAvgEtica" class="text-base font-extrabold text-stone-900">0.00</span>
+              </div>
+              <div class="bg-white/75 rounded-2xl p-2.5 border border-white">
+                <span class="text-[10px] uppercase font-bold text-stone-500 block">Prom. Humano y Com.</span>
+                <span id="capAvgHumano" class="text-base font-extrabold text-stone-900">0.00</span>
+              </div>
+              <div class="bg-stone-900 text-white rounded-2xl p-2.5">
+                <span class="text-[10px] uppercase font-bold text-stone-300 block">Suma Grupal Total</span>
+                <span id="capTotalSumGroup" class="text-base font-extrabold text-amber-300">0.0</span>
+              </div>
+              <div class="bg-emerald-700 text-white rounded-2xl p-2.5">
+                <span class="text-[10px] uppercase font-bold text-emerald-100 block">Promedio General</span>
+                <span id="capTotalAvgGroup" class="text-base font-extrabold">0.00</span>
+              </div>
+            </div>
+
+            <!-- Editable Table for Campos Formativos -->
+            <div class="overflow-x-auto max-h-[540px] rounded-2xl border border-stone-300/80 bg-white/50">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead class="sticky top-0 z-20 bg-stone-900 text-stone-100 uppercase text-[11px]">
+                  <tr>
+                    <th class="py-3 px-3 font-bold w-12 text-center">No.</th>
+                    <th class="py-3 px-3 font-bold min-w-[230px]">Nombre del Alumno</th>
+                    <th class="py-3 px-2.5 font-bold text-center w-32">Lenguajes<br><span class="text-[9px] text-amber-200 font-normal">(0 - 10)</span></th>
+                    <th class="py-3 px-2.5 font-bold text-center w-36">Saberes y Pensamiento Científico<br><span class="text-[9px] text-amber-200 font-normal">(0 - 10)</span></th>
+                    <th class="py-3 px-2.5 font-bold text-center w-36">Ética, Naturaleza y Sociedad<br><span class="text-[9px] text-amber-200 font-normal">(0 - 10)</span></th>
+                    <th class="py-3 px-2.5 font-bold text-center w-36">De lo Humano y lo Comunitario<br><span class="text-[9px] text-amber-200 font-normal">(0 - 10)</span></th>
+                    <th class="py-3 px-3 font-bold text-center w-24 bg-stone-800">SUMA</th>
+                    <th class="py-3 px-3 font-bold text-center w-24 bg-emerald-900">PROM</th>
+                    <th class="py-3 px-3 font-bold text-center w-28">Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="capturaTableBody" class="divide-y divide-stone-200/80"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- SECTION 4: EVALUACIONES (SISTEMA DE EVALUACIÓN PONDERADA 100%)      -->
+        <!-- =================================================================== -->
+        <section id="view-evaluaciones" class="hidden animate-view space-y-4">
+          <div class="glass-card rounded-3xl p-5">
+            <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pb-4 border-b border-stone-300/70">
+              <div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="px-2.5 py-0.5 rounded-full bg-amber-800 text-white text-[11px] font-bold uppercase">Hoja 2: CONTROL DE EVALUACIÓN Y PONDERACIONES (100%)</span>
+                  <span class="text-xs text-stone-700 font-medium">Fórmulas idénticas al Excel original</span>
+                </div>
+                <h2 class="text-lg font-bold text-stone-900 mt-1">Sistema de Evaluación Ponderada por Criterios</h2>
+                <p class="text-xs text-stone-600">
+                  Instrucciones: Capture únicamente las celdas en color crema (Aciertos / Entregas / Puntos). No se permiten valores superiores a los máximos establecidos. Los porcentajes, el total 100%, la calificación final (0-10) y el estatus se calculan automáticamente.
+                </p>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2">
+                <select id="evalWeightedFilter" aria-label="Filtrar alumnos en evaluación ponderada" class="bg-white border border-stone-300 rounded-full px-3 py-2 text-xs font-semibold text-stone-800">
+                  <option value="ALL">Todos los alumnos (35)</option>
+                  <option value="CAPTURED">Con datos capturados</option>
+                  <option value="PENDING">Pendientes de captura</option>
+                  <option value="APROBADO">Aprobados (≥ 6.0)</option>
+                  <option value="REPROBADO">Reprobados (&lt; 6.0)</option>
+                </select>
+
+                <button
+                  id="btnOpenConversionFromEval"
+                  type="button"
+                  class="px-3.5 py-2 rounded-full bg-white hover:bg-stone-100 text-stone-900 border border-stone-300 text-xs font-semibold transition"
+                >
+                  📊 Ver Tablas de Conversión (Hoja 3)
+                </button>
+
+                <button
+                  id="btnFillRemainingWeightedDemo"
+                  type="button"
+                  class="px-3.5 py-2 rounded-full bg-stone-800 hover:bg-stone-900 text-white text-xs font-semibold transition"
+                >
+                  ⚡ Simular Grupo Completo (35)
+                </button>
+
+                <button
+                  id="btnResetOriginalExcelWeighted"
+                  type="button"
+                  title="Restaurar exactamente los 5 alumnos capturados en el archivo Excel adjunto original"
+                  class="px-3 py-2 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 text-xs font-semibold transition"
+                >
+                  ↺ Restaurar 5 Registros Originales del Excel
+                </button>
+              </div>
+            </div>
+
+            <!-- Criteria Weight Cards (Exact Rubric from Prompt & Excel) -->
+            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 my-3.5">
+              <div class="bg-amber-50/90 border border-amber-200 rounded-2xl p-2.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-bold text-stone-900">1. EXAMEN</span>
+                  <span class="text-xs font-extrabold text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-full">30%</span>
+                </div>
+                <p class="text-[11px] text-stone-600 mt-1">Máximo: <strong>20 aciertos</strong></p>
+                <p class="text-[10px] text-stone-500">Fórmula: <code>(Aciertos/20)*30%</code></p>
+              </div>
+
+              <div class="bg-emerald-50/90 border border-emerald-200 rounded-2xl p-2.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-bold text-stone-900">2. TAREAS</span>
+                  <span class="text-xs font-extrabold text-emerald-900 bg-emerald-200/80 px-2 py-0.5 rounded-full">20%</span>
+                </div>
+                <p class="text-[11px] text-stone-600 mt-1">Máximo: <strong>25 tareas</strong></p>
+                <p class="text-[10px] text-stone-500">Fórmula: <code>(Tareas/25)*20%</code></p>
+              </div>
+
+              <div class="bg-sky-50/90 border border-sky-200 rounded-2xl p-2.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-bold text-stone-900">3. TRABAJOS</span>
+                  <span class="text-xs font-extrabold text-sky-900 bg-sky-200/80 px-2 py-0.5 rounded-full">20%</span>
+                </div>
+                <p class="text-[11px] text-stone-600 mt-1">Máximo: <strong>30 trabajos</strong></p>
+                <p class="text-[10px] text-stone-500">Fórmula: <code>(Trabajos/30)*20%</code></p>
+              </div>
+
+              <div class="bg-purple-50/90 border border-purple-200 rounded-2xl p-2.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-bold text-stone-900">4. MUEST. Y PROY.</span>
+                  <span class="text-xs font-extrabold text-purple-900 bg-purple-200/80 px-2 py-0.5 rounded-full">10%</span>
+                </div>
+                <p class="text-[11px] text-stone-600 mt-1">Máx: <strong>9 entregas</strong> (3 M + 6 P)</p>
+                <p class="text-[10px] text-stone-500">Fórmula: <code>((M+P)/9)*10%</code></p>
+              </div>
+
+              <div class="bg-rose-50/90 border border-rose-200 rounded-2xl p-2.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-bold text-stone-900">5. PARTICIPACIÓN</span>
+                  <span class="text-xs font-extrabold text-rose-900 bg-rose-200/80 px-2 py-0.5 rounded-full">10%</span>
+                </div>
+                <p class="text-[11px] text-stone-600 mt-1">Máximo: <strong>10 puntos</strong></p>
+                <p class="text-[10px] text-stone-500">Fórmula: <code>(Puntos/10)*10%</code></p>
+              </div>
+
+              <div class="bg-stone-100/95 border border-stone-300 rounded-2xl p-2.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-bold text-stone-900">6. DISCIPLINA</span>
+                  <span class="text-xs font-extrabold text-stone-900 bg-stone-300 px-2 py-0.5 rounded-full">10%</span>
+                </div>
+                <p class="text-[11px] text-stone-600 mt-1">Máximo: <strong>10 puntos</strong></p>
+                <p class="text-[10px] text-stone-500">Fórmula: <code>(Puntos/10)*10%</code></p>
+              </div>
+            </div>
+
+            <!-- Weighted Evaluation Table -->
+            <div class="overflow-x-auto max-h-[540px] rounded-2xl border border-stone-300 bg-white/60">
+              <table class="w-full text-left border-collapse text-[11px]">
+                <thead class="sticky top-0 z-20 bg-stone-900 text-white uppercase">
+                  <tr class="border-b border-stone-700 text-[10px]">
+                    <th colspan="2" class="py-2 px-2 text-center bg-stone-900">Datos del Alumno</th>
+                    <th colspan="2" class="py-2 px-2 text-center bg-amber-950/90">Examen (30%)</th>
+                    <th colspan="2" class="py-2 px-2 text-center bg-emerald-950/90">Tareas (20%)</th>
+                    <th colspan="2" class="py-2 px-2 text-center bg-sky-950/90">Trabajos Concluidos (20%)</th>
+                    <th colspan="3" class="py-2 px-2 text-center bg-purple-950/90">Muestreos y Proyectos (10%)</th>
+                    <th colspan="2" class="py-2 px-2 text-center bg-rose-950/90">Participación (10%)</th>
+                    <th colspan="2" class="py-2 px-2 text-center bg-stone-800">Disciplina (10%)</th>
+                    <th colspan="3" class="py-2 px-2 text-center bg-emerald-900">Resultado Final</th>
+                  </tr>
+                  <tr class="text-[10px] bg-stone-800 text-stone-200">
+                    <th class="py-2.5 px-2 text-center">No.</th>
+                    <th class="py-2.5 px-2 min-w-[200px]">Nombre del Alumno</th>
+                    <th class="py-2.5 px-1.5 text-center">Aciertos<br><span class="text-amber-300">(Máx 20)</span></th>
+                    <th class="py-2.5 px-1.5 text-center">% Exam.<br>(30%)</th>
+                    <th class="py-2.5 px-1.5 text-center">Tareas<br><span class="text-amber-300">(Máx 25)</span></th>
+                    <th class="py-2.5 px-1.5 text-center">% Tareas<br>(20%)</th>
+                    <th class="py-2.5 px-1.5 text-center">Trabajos<br><span class="text-amber-300">(Máx 30)</span></th>
+                    <th class="py-2.5 px-1.5 text-center">% Trab.<br>(20%)</th>
+                    <th class="py-2.5 px-1.5 text-center">Muest.<br><span class="text-amber-300">(Máx 3)</span></th>
+                    <th class="py-2.5 px-1.5 text-center">Proy.<br><span class="text-amber-300">(Máx 6)</span></th>
+                    <th class="py-2.5 px-1.5 text-center">% M. y P.<br>(10%)</th>
+                    <th class="py-2.5 px-1.5 text-center">Puntos<br><span class="text-amber-300">(Máx 10)</span></th>
+                    <th class="py-2.5 px-1.5 text-center">% Part.<br>(10%)</th>
+                    <th class="py-2.5 px-1.5 text-center">Puntos<br><span class="text-amber-300">(Máx 10)</span></th>
+                    <th class="py-2.5 px-1.5 text-center">% Disc.<br>(10%)</th>
+                    <th class="py-2.5 px-2 text-center bg-stone-900">Total %<br>(100%)</th>
+                    <th class="py-2.5 px-2 text-center bg-emerald-950">Calif.<br>(0 - 10)</th>
+                    <th class="py-2.5 px-2 text-center">Estatus</th>
+                  </tr>
+                </thead>
+                <tbody id="weightedTableBody" class="divide-y divide-stone-200/80"></tbody>
+                <tfoot id="weightedTableFoot" class="sticky bottom-0 z-10 bg-stone-900 text-white font-bold text-xs"></tfoot>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- SECTION 5: REPORTES (EXCEL Y PDF GRUPAL / INDIVIDUAL)               -->
+        <!-- =================================================================== -->
+        <section id="view-reportes" class="hidden animate-view space-y-5">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+            <!-- Left Card: Generación y Descarga de Excel Oficial (.xlsx) -->
+            <div class="lg:col-span-6 glass-card rounded-3xl p-6 flex flex-col justify-between border-2 border-emerald-700/20">
+              <div>
+                <div class="flex items-center justify-between">
+                  <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold">Libro Oficial Microsoft Excel (.xlsx)</span>
+                  <span class="text-xs font-semibold text-stone-500">4 Hojas Incluidas</span>
+                </div>
+                <h2 class="text-xl font-bold text-stone-900 mt-3">Exportación Completa a Excel</h2>
+                <p class="text-xs text-stone-600 mt-1 leading-relaxed">
+                  Genera y descarga un archivo <code>.xlsx</code> idéntico en estructura y lógica al archivo de referencia <strong>"6° A 2026Gm.xlsx"</strong>, listo para abrirse y editarse en Microsoft Excel.
+                </p>
+
+                <ul class="mt-4 space-y-2 text-xs text-stone-700">
+                  <li class="flex items-center gap-2">
+                    <span class="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center text-[10px] font-bold">1</span>
+                    <span><strong>Hoja EXAMENES:</strong> Encabezado oficial SEP, datos de la escuela, maestra, ciclo escolar, 35 alumnos, calificaciones por campo formativo, fórmulas <code>=SUM</code> y <code>=AVERAGE</code>.</span>
+                  </li>
+                  <li class="flex items-center gap-2">
+                    <span class="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center text-[10px] font-bold">2</span>
+                    <span><strong>Hoja CONTROL DE EVALUACIÓN (100%):</strong> Todos los criterios ponderados (Examen 30%, Tareas 20%, Trabajos 20%, Muestreos/Proyectos 10%, Participación 10%, Disciplina 10%) con fórmulas activas.</span>
+                  </li>
+                  <li class="flex items-center gap-2">
+                    <span class="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center text-[10px] font-bold">3</span>
+                    <span><strong>Hoja TABLAS DE CONVERSIÓN:</strong> Tablas de equivalencia rápida por rubro de evaluación.</span>
+                  </li>
+                  <li class="flex items-center gap-2">
+                    <span class="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center text-[10px] font-bold">4</span>
+                    <span><strong>Hoja sistema2:</strong> Concentrado espejo actualizado del periodo seleccionado.</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="mt-6 pt-4 border-t border-stone-300/70 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="text-xs text-stone-600">
+                  Archivo: <strong class="text-stone-900">6°_A_2026Gm_Actualizado.xlsx</strong>
+                </div>
+                <button
+                  id="reportDownloadExcelBtn"
+                  type="button"
+                  class="w-full sm:w-auto px-6 py-3 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-lg flex items-center justify-center gap-2 transition"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                  </svg>
+                  <span>DESCARGAR EXCEL</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Right Card: Generación y Descarga de PDF (Grupal Horizontal e Individual) -->
+            <div class="lg:col-span-6 glass-card rounded-3xl p-6 flex flex-col justify-between border-2 border-stone-800/20">
+              <div>
+                <div class="flex items-center justify-between">
+                  <span class="px-3 py-1 rounded-full bg-stone-900 text-amber-100 text-xs font-bold">Documentos Oficiales PDF</span>
+                  <span class="text-xs font-semibold text-stone-500">Listos para Impresión</span>
+                </div>
+                <h2 class="text-xl font-bold text-stone-900 mt-3">Generador de Reportes PDF</h2>
+                <p class="text-xs text-stone-600 mt-1 leading-relaxed">
+                  Configura el periodo y el tipo de reporte que deseas exportar en formato PDF con membrete escolar oficial y firmas.
+                </p>
+
+                <!-- PDF Configuration Controls -->
+                <div class="mt-4 space-y-3 bg-white/75 rounded-2xl p-4 border border-white">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label for="pdfReportTypeSelect" class="block text-[11px] font-bold text-stone-700 uppercase mb-1">Tipo de Reporte PDF</label>
+                      <select id="pdfReportTypeSelect" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 text-xs font-semibold text-stone-900">
+                        <option value="GROUP_BOTH">Reporte Grupal Completo (Campos + Ponderación)</option>
+                        <option value="GROUP_FIELDS">Reporte Grupal · Campos Formativos (Horizontal)</option>
+                        <option value="GROUP_WEIGHTED">Reporte Grupal · Control Ponderado 100% (Horizontal)</option>
+                        <option value="INDIVIDUAL">Boleta / Reporte Individual por Alumno</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label for="pdfPeriodSelect" class="block text-[11px] font-bold text-stone-700 uppercase mb-1">Periodo / Evaluación</label>
+                      <select id="pdfPeriodSelect" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 text-xs font-semibold text-stone-900">
+                        <option value="DIAGNOSTICO">Diagnóstico (Ciclo 2026 - 2027)</option>
+                        <option value="TRIMESTRE_1">Primer Trimestre</option>
+                        <option value="TRIMESTRE_2">Segundo Trimestre</option>
+                        <option value="TRIMESTRE_3">Tercer Trimestre</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div id="pdfIndividualStudentWrapper" class="hidden pt-2 border-t border-stone-200">
+                    <label for="pdfStudentSelect" class="block text-[11px] font-bold text-stone-700 uppercase mb-1">Seleccionar Alumno para Reporte Individual</label>
+                    <select id="pdfStudentSelect" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 text-xs font-semibold text-stone-900"></select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-6 pt-4 border-t border-stone-300/70 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <span class="text-xs text-stone-600">Formato formal con membrete y firmas</span>
+                <button
+                  id="reportGeneratePdfBtn"
+                  type="button"
+                  class="w-full sm:w-auto px-6 py-3 rounded-full bg-stone-900 hover:bg-stone-950 text-amber-100 font-bold text-xs shadow-lg flex items-center justify-center gap-2 transition"
+                >
+                  <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                  </svg>
+                  <span>GENERAR PDF</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive Live Preview of Selected Report -->
+          <div class="glass-card rounded-3xl p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-4 border-b border-stone-300/70">
+              <div>
+                <h3 class="text-base font-bold text-stone-900">Vista Previa del Documento Oficial</h3>
+                <p class="text-xs text-stone-600">Previsualización en vivo de los datos que se incluirán en la exportación.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  id="previewQuickIndividualBtn"
+                  type="button"
+                  class="px-3 py-1.5 rounded-full bg-white border border-stone-300 text-xs font-semibold text-stone-800 hover:bg-stone-100 transition"
+                >
+                  Ver Boleta Individual de Ejemplo
+                </button>
+              </div>
+            </div>
+
+            <div id="reportLivePreviewContainer" class="bg-white rounded-2xl p-5 border border-stone-300 shadow-inner overflow-x-auto text-xs text-stone-900"></div>
+          </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- SECTION 6: CONFIGURACIÓN, SEGURIDAD Y RESPALDO DE INFORMACIÓN       -->
+        <!-- =================================================================== -->
+        <section id="view-configuracion" class="hidden animate-view space-y-5">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+            <!-- Institutional & Teacher Data Form -->
+            <div class="lg:col-span-7 glass-card rounded-3xl p-6">
+              <h2 class="text-lg font-bold text-stone-900">Datos Institucionales y del Grupo</h2>
+              <p class="text-xs text-stone-600 mb-4">
+                Estos datos encabezan los reportes oficiales en Excel y PDF (tomados del archivo original <code>6° A 2026Gm.xlsx</code>).
+              </p>
+
+              <form id="schoolConfigForm" class="space-y-3.5 text-xs">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label for="cfgSchoolType" class="block font-bold text-stone-700 mb-1">Tipo de Institución</label>
+                    <input id="cfgSchoolType" type="text" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-semibold" value="ESCUELA PRIMARIA FEDERAL" />
+                  </div>
+                  <div>
+                    <label for="cfgSchoolName" class="block font-bold text-stone-700 mb-1">Nombre Oficial de la Escuela</label>
+                    <input id="cfgSchoolName" type="text" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-semibold" value="SALVADOR ZUBIRAN ANCHONDO T. M." />
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
+                  <div>
+                    <label for="cfgCct" class="block font-bold text-stone-700 mb-1">C.C.T.</label>
+                    <input id="cfgCct" type="text" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-semibold" value="19DPR1719T" />
+                  </div>
+                  <div>
+                    <label for="cfgZone" class="block font-bold text-stone-700 mb-1">Zona Escolar</label>
+                    <input id="cfgZone" type="text" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-semibold" value="No. 114" />
+                  </div>
+                  <div>
+                    <label for="cfgRegion" class="block font-bold text-stone-700 mb-1">Región</label>
+                    <input id="cfgRegion" type="text" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-semibold" value="No. 6" />
+                  </div>
+                  <div>
+                    <label for="cfgPhone" class="block font-bold text-stone-700 mb-1">Teléfono</label>
+                    <input id="cfgPhone" type="text" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-semibold" value="81 81 48 58 08" />
+                  </div>
+                </div>
+
+                <div>
+                  <label for="cfgAddress" class="block font-bold text-stone-700 mb-1">Dirección Oficial</label>
+                  <input id="cfgAddress" type="text" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-semibold" value="CIRCUITO DE LOS LLANOS S/N COL. EX HDA SANTA ROSA, APODACA N. L." />
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                  <div>
+                    <label for="cfgTeacher" class="block font-bold text-stone-700 mb-1">Nombre del Docente</label>
+                    <input id="cfgTeacher" type="text" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-semibold" value="CLAUDIA CHAVARRÍA RAMÍREZ" />
+                  </div>
+                  <div>
+                    <label for="cfgCycle" class="block font-bold text-stone-700 mb-1">Ciclo Escolar</label>
+                    <input id="cfgCycle" type="text" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-semibold" value="2026 - 2027" />
+                  </div>
+                  <div>
+                    <label for="cfgGroup" class="block font-bold text-stone-700 mb-1">Grado y Grupo</label>
+                    <input id="cfgGroup" type="text" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-semibold" value="6° A" />
+                  </div>
+                </div>
+
+                <div class="pt-3 flex justify-end">
+                  <button type="submit" class="px-5 py-2.5 rounded-full bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs shadow transition">
+                    Guardar Configuración Institucional
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Security, Access Credentials & Database Backup -->
+            <div class="lg:col-span-5 space-y-5">
+              <!-- Security Card -->
+              <div class="glass-card rounded-3xl p-6">
+                <h3 class="text-base font-bold text-stone-900">Seguridad y Control de Acceso Docente</h3>
+                <p class="text-xs text-stone-600 mt-1">
+                  Protege la privacidad de los registros estudiantiles mediante usuario y contraseña.
+                </p>
+                <form id="securityConfigForm" class="mt-3.5 space-y-3 text-xs">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label for="cfgUsername" class="block font-bold text-stone-700 mb-1">Usuario Docente</label>
+                      <input id="cfgUsername" type="text" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-semibold" value="cchavarria" />
+                    </div>
+                    <div>
+                      <label for="cfgPassword" class="block font-bold text-stone-700 mb-1">Contraseña / PIN de Acceso</label>
+                      <input id="cfgPassword" type="password" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-semibold" value="2026" />
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between pt-2">
+                    <span class="text-[11px] text-stone-600">Puedes bloquear la sesión desde el ícono de candado superior.</span>
+                    <button type="submit" class="px-4 py-2 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition">
+                      Actualizar Credenciales
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- Backup & Persistence Card -->
+              <div class="glass-card rounded-3xl p-6">
+                <h3 class="text-base font-bold text-stone-900">Persistencia y Respaldo de Información</h3>
+                <p class="text-xs text-stone-600 mt-1">
+                  Además del guardado automático continuo, puedes descargar un archivo de respaldo completo (<code>.json</code>) a tu equipo o restaurar una copia previa para no depender únicamente del navegador.
+                </p>
+                <div class="flex flex-wrap items-center gap-2.5 mt-4">
+                  <button
+                    id="btnExportBackupJson"
+                    type="button"
+                    class="px-4 py-2.5 rounded-full bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold transition"
+                  >
+                    💾 Descargar Respaldo (.JSON)
+                  </button>
+
+                  <label for="jsonRestoreInput" class="cursor-pointer px-4 py-2.5 rounded-full bg-white hover:bg-stone-100 text-stone-900 border border-stone-300 text-xs font-semibold transition">
+                    <span>📂 Restaurar Respaldo (.JSON)</span>
+                    <input id="jsonRestoreInput" type="file" accept=".json" class="hidden" />
+                  </label>
+
+                  <button
+                    id="btnFactoryResetApp"
+                    type="button"
+                    class="px-3.5 py-2 rounded-full bg-rose-100 hover:bg-rose-200 text-rose-900 text-xs font-semibold transition"
+                  >
+                    Restaurar Estado Inicial de Fábrica
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <!-- 3. FLOATING BOTTOM NAVIGATION DOCK (Inspired by Reference Bottom Pill) -->
+    <nav aria-label="Navegación rápida inferior" class="fixed bottom-3 left-1/2 -translate-x-1/2 z-40 max-w-full px-2">
+      <div class="spatial-bottom-dock rounded-full p-1.5 flex items-center gap-1 overflow-x-auto">
+        <button type="button" data-nav="inicio" class="dock-item-btn dock-btn-active px-4 py-2 rounded-full text-xs text-white/95 hover:bg-white/20 transition whitespace-nowrap">
+          Inicio
+        </button>
+        <button type="button" data-nav="alumnos" class="dock-item-btn px-4 py-2 rounded-full text-xs text-white/95 hover:bg-white/20 transition whitespace-nowrap">
+          Alumnos
+        </button>
+        <button type="button" data-nav="captura" class="dock-item-btn px-4 py-2 rounded-full text-xs text-white/95 hover:bg-white/20 transition whitespace-nowrap">
+          Captura de Calificaciones
+        </button>
+        <button type="button" data-nav="evaluaciones" class="dock-item-btn px-4 py-2 rounded-full text-xs text-white/95 hover:bg-white/20 transition whitespace-nowrap">
+          Evaluaciones (100%)
+        </button>
+        <button type="button" data-nav="reportes" class="dock-item-btn px-4 py-2 rounded-full text-xs text-white/95 hover:bg-white/20 transition whitespace-nowrap">
+          Reportes
+        </button>
+        <button type="button" data-nav="configuracion" class="dock-item-btn px-4 py-2 rounded-full text-xs text-white/95 hover:bg-white/20 transition whitespace-nowrap">
+          Configuración
+        </button>
+        <button
+          id="dockQuickAddStudentBtn"
+          type="button"
+          title="Registrar nuevo alumno"
+          class="w-8 h-8 rounded-full bg-white text-stone-900 font-bold text-sm flex items-center justify-center shadow hover:bg-stone-100 transition ml-1 flex-shrink-0"
+        >+</button>
+      </div>
+    </nav>
+
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODALS (Individual Student File, Add/Edit Student, Delete Confirm,    -->
+  <!--         Conversion Tables Hoja 3, and Teacher Login/Lock Screen)      -->
+  <!-- ===================================================================== -->
+
+  <!-- Modal 1: Expediente / Consulta Individual y Boleta del Alumno -->
+  <div id="studentDetailModal" class="hidden fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass-card bg-stone-50/95 rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-white max-h-[90vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3 pb-3 border-b border-stone-300">
+        <div>
+          <span id="modalStudentNoBadge" class="px-2.5 py-0.5 rounded-full bg-stone-900 text-amber-200 text-xs font-bold">Lista #1</span>
+          <h3 id="modalStudentName" class="text-xl font-extrabold text-stone-900 mt-1">ACOSTA MATEOS ITZEL ALEJANDRA</h3>
+          <p id="modalStudentMeta" class="text-xs text-stone-600">6° "A" · Ciclo Escolar 2026 - 2027</p>
+        </div>
+        <button id="closeStudentDetailModalBtn" type="button" class="w-8 h-8 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold text-sm flex items-center justify-center">✕</button>
+      </div>
+
+      <div id="modalStudentBodyContent" class="my-4 space-y-4 text-xs"></div>
+
+      <div class="pt-3 border-t border-stone-300 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <button id="modalPrevStudentBtn" type="button" class="px-3 py-1.5 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-semibold">← Anterior</button>
+          <button id="modalNextStudentBtn" type="button" class="px-3 py-1.5 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-semibold">Siguiente →</button>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="modalDownloadIndividualPdfBtn" type="button" class="px-4 py-2 rounded-full bg-stone-900 hover:bg-stone-800 text-amber-100 text-xs font-bold">
+            📄 Descargar Reporte Individual PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Registrar / Editar Alumno -->
+  <div id="studentFormModal" class="hidden fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass-card bg-stone-50/95 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-white">
+      <div class="flex items-center justify-between pb-3 border-b border-stone-300">
+        <h3 id="studentFormModalTitle" class="text-lg font-bold text-stone-900">Registrar Alumno</h3>
+        <button id="closeStudentFormModalBtn" type="button" class="w-8 h-8 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold text-sm">✕</button>
+      </div>
+
+      <form id="studentRecordForm" class="mt-4 space-y-3.5 text-xs">
+        <input id="formStudentId" type="hidden" />
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label for="formStudentNo" class="block font-bold text-stone-700 mb-1">No. Lista</label>
+            <input id="formStudentNo" type="number" min="1" max="99" required class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-bold" />
+          </div>
+          <div>
+            <label for="formStudentGroup" class="block font-bold text-stone-700 mb-1">Grado y Grupo</label>
+            <input id="formStudentGroup" type="text" required value="6° A" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-semibold" />
+          </div>
+          <div>
+            <label for="formStudentGender" class="block font-bold text-stone-700 mb-1">Género</label>
+            <select id="formStudentGender" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-semibold">
+              <option value="M">Mujer (M)</option>
+              <option value="H">Hombre (H)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="formStudentName" class="block font-bold text-stone-700 mb-1">Nombre Completo (APELLIDOS Y NOMBRES)</label>
+          <input id="formStudentName" type="text" required placeholder="Ej. APELLIDO PATERNO MATERNO NOMBRE" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 font-semibold uppercase" />
+        </div>
+
+        <div>
+          <label for="formStudentCurp" class="block font-bold text-stone-700 mb-1">Observaciones / Notas Académicas (Opcional)</label>
+          <input id="formStudentCurp" type="text" placeholder="Ej. Participación destacada en proyectos..." class="w-full bg-white border border-stone-300 rounded-xl px-3 py-2" />
+        </div>
+
+        <div class="pt-3 flex justify-end gap-2">
+          <button id="cancelStudentFormBtn" type="button" class="px-4 py-2 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-800 font-semibold">Cancelar</button>
+          <button type="submit" class="px-5 py-2 rounded-full bg-stone-900 hover:bg-stone-800 text-white font-bold">Guardar Alumno</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: Confirmación de Eliminación de Alumno -->
+  <div id="deleteConfirmModal" class="hidden fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass-card bg-stone-50/95 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-white text-center">
+      <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center mx-auto font-bold text-xl">!</div>
+      <h3 class="text-base font-bold text-stone-900 mt-3">¿Confirmar baja del alumno?</h3>
+      <p id="deleteConfirmStudentName" class="text-xs text-stone-600 mt-1 font-medium"></p>
+      <p class="text-[11px] text-stone-500 mt-1">Se eliminarán sus calificaciones del padrón actual y se reordenará la numeración de lista.</p>
+      <div class="mt-5 flex items-center justify-center gap-2.5">
+        <button id="cancelDeleteStudentBtn" type="button" class="px-4 py-2 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-semibold">Cancelar</button>
+        <button id="confirmDeleteStudentBtn" type="button" class="px-5 py-2 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold">Sí, Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4: Tablas de Conversión Rápida por Rubro de Evaluación (Hoja 3 del Excel) -->
+  <div id="conversionTablesModal" class="hidden fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass-card bg-stone-50/95 rounded-3xl max-w-5xl w-full p-6 shadow-2xl border border-white max-h-[88vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-stone-300">
+        <div>
+          <span class="px-2.5 py-0.5 rounded-full bg-stone-900 text-amber-200 text-[10px] font-bold uppercase">Hoja 3 del Archivo Excel</span>
+          <h3 class="text-lg font-extrabold text-stone-900 mt-0.5">Tablas de Conversión Rápida por Rubro de Evaluación</h3>
+        </div>
+        <button id="closeConversionModalBtn" type="button" class="w-8 h-8 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold text-sm">✕</button>
+      </div>
+      <div id="conversionTablesContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mt-4 text-[11px]"></div>
+    </div>
+  </div>
+
+  <!-- Modal 5: Acceso y Seguridad Docente (Pantalla de Bloqueo / Inicio de Sesión) -->
+  <div id="authLockModal" class="hidden fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-xl flex items-center justify-center p-4">
+    <div class="glass-card bg-stone-100/90 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-white text-center">
+      <div class="w-14 h-14 rounded-full bg-stone-900 text-amber-200 flex items-center justify-center mx-auto font-bold text-lg shadow-lg">
+        SICEP
+      </div>
+      <h3 class="text-lg font-extrabold text-stone-900 mt-3">Acceso Docente Protegido</h3>
+      <p class="text-xs text-stone-600 mt-1">
+        La información de los alumnos es privada. Ingresa tus credenciales para desbloquear el sistema.
+      </p>
+      <form id="authLoginForm" class="mt-4 space-y-3 text-left text-xs">
+        <div>
+          <label for="loginUsernameInput" class="block font-bold text-stone-700 mb-1">Usuario</label>
+          <input id="loginUsernameInput" type="text" required value="cchavarria" class="w-full bg-white border border-stone-300 rounded-xl px-3.5 py-2 font-semibold" />
+        </div>
+        <div>
+          <label for="loginPasswordInput" class="block font-bold text-stone-700 mb-1">Contraseña / PIN (Por defecto: 2026)</label>
+          <input id="loginPasswordInput" type="password" required value="2026" class="w-full bg-white border border-stone-300 rounded-xl px-3.5 py-2 font-semibold" />
+        </div>
+        <p id="loginErrorMsg" class="hidden text-rose-600 font-semibold text-center"></p>
+        <button type="submit" class="w-full py-2.5 rounded-full bg-stone-900 hover:bg-stone-800 text-white font-bold shadow-md transition">
+          Ingresar al Sistema
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Floating Toast Notification -->
+  <div id="toastNotification" class="fixed top-20 right-5 z-50 hidden transform transition-all duration-300">
+    <div class="glass-card-espresso rounded-2xl px-4 py-3 shadow-2xl flex items-center gap-2.5 text-xs border border-white/25">
+      <span id="toastIcon" class="w-5 h-5 rounded-full bg-emerald-500 text-stone-950 font-bold flex items-center justify-center">✓</span>
+      <span id="toastMessage" class="font-medium text-stone-100">Cambios guardados correctamente</span>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- APPLICATION LOGIC (Architecture: Data Store, Calculation Engine,      -->
+  <!--                    UI Renderer, Excel/PDF Generators)                 -->
+  <!-- ===================================================================== -->
+  <script src="js/app.js"></script>
+</body>
+</html>
