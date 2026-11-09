@@ -140,41 +140,38 @@
 
   function updateDbUI() {
     const modeBadge = document.getElementById('dbModeBadge');
-    const teacherLabel = document.getElementById('dbActiveTeacherLabel');
-    const groupLabel = document.getElementById('dbActiveGroupLabel');
+    const apiUrlLabel = document.getElementById('dbApiUrlLabel');
     const syncStatusText = document.getElementById('dbSyncStatusText');
     const saveTxt = document.getElementById('saveStatusText');
 
-    if (teacherLabel && state.schoolConfig) {
-      teacherLabel.textContent = state.schoolConfig.teacher || 'Docente';
-    }
-    if (groupLabel && state.schoolConfig) {
-      groupLabel.textContent = `${state.schoolConfig.group || '6° A'} (${state.schoolConfig.cycle || '2026-2027'})`;
+    const isMysql = typeof AppDB !== 'undefined' && AppDB.getMode() === 'mysql';
+
+    if (apiUrlLabel && typeof AppDB !== 'undefined') {
+      apiUrlLabel.textContent = AppDB.getApiUrl();
     }
 
-    const isCloud = typeof AppDB !== 'undefined' && AppDB.getMode() === 'cloud';
     if (modeBadge) {
-      if (isCloud) {
+      if (isMysql) {
         modeBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300';
-        modeBadge.textContent = '☁️ Nube Activa (Firestore)';
+        modeBadge.textContent = '🐬 Conectado a MySQL';
       } else {
         modeBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300';
-        modeBadge.textContent = '💾 Modo Local';
+        modeBadge.textContent = '💾 Modo Local (Sin Servidor)';
       }
     }
 
     if (syncStatusText) {
-      if (isCloud) {
+      if (isMysql) {
         syncStatusText.className = 'font-semibold text-emerald-700';
-        syncStatusText.textContent = '✓ Conectado a Firestore (Sincronización Multi-Usuario)';
+        syncStatusText.textContent = '✓ Conectado al Servidor MySQL (sicep_escolar)';
       } else {
         syncStatusText.className = 'font-semibold text-amber-700';
-        syncStatusText.textContent = '✓ Guardado local activo (Configura Firebase para multi-dispositivo)';
+        syncStatusText.textContent = '💾 Guardado local activo (Servidor MySQL en espera)';
       }
     }
 
     if (saveTxt) {
-      saveTxt.textContent = isCloud ? 'Nube sincronizada' : 'Guardado local';
+      saveTxt.textContent = isMysql ? 'MySQL sincronizado' : 'Guardado local';
     }
   }
 
@@ -207,14 +204,14 @@
 
     const dot = document.getElementById('saveStatusDot');
     const txt = document.getElementById('saveStatusText');
-    const isCloud = typeof AppDB !== 'undefined' && AppDB.getMode() === 'cloud';
+    const isMysql = typeof AppDB !== 'undefined' && AppDB.getMode() === 'mysql';
 
     if (dot && txt) {
-      dot.className = isCloud ? 'w-2 h-2 rounded-full bg-cyan-400 animate-ping' : 'w-2 h-2 rounded-full bg-emerald-400 animate-ping';
-      txt.textContent = isCloud ? 'Subiendo a la nube...' : 'Sincronizado ahora';
+      dot.className = isMysql ? 'w-2 h-2 rounded-full bg-cyan-400 animate-ping' : 'w-2 h-2 rounded-full bg-emerald-400 animate-ping';
+      txt.textContent = isMysql ? 'Sincronizando con MySQL...' : 'Sincronizado ahora';
       setTimeout(() => {
-        dot.className = isCloud ? 'w-2 h-2 rounded-full bg-cyan-400' : 'w-2 h-2 rounded-full bg-emerald-400';
-        txt.textContent = isCloud ? 'Nube sincronizada' : 'Guardado local';
+        dot.className = isMysql ? 'w-2 h-2 rounded-full bg-cyan-400' : 'w-2 h-2 rounded-full bg-emerald-400';
+        txt.textContent = isMysql ? 'MySQL sincronizado' : 'Guardado local';
       }, 900);
     }
     updateDbUI();
@@ -2287,57 +2284,59 @@
       renderAllActiveViews();
     });
 
-    // Cloud Database Modal Controls
-    const btnOpenCloud = document.getElementById('btnOpenCloudConfigModal');
-    const cloudModal = document.getElementById('cloudConfigModal');
-    const closeCloudBtn = document.getElementById('closeCloudModalBtn');
-    const cancelCloudBtn = document.getElementById('btnCancelCloudConfig');
-    const cloudForm = document.getElementById('cloudConfigForm');
+    // MySQL Database Modal Controls
+    const btnOpenMysql = document.getElementById('btnOpenMysqlConfigModal');
+    const mysqlModal = document.getElementById('mysqlConfigModal');
+    const closeMysqlBtn = document.getElementById('closeMysqlModalBtn');
+    const cancelMysqlBtn = document.getElementById('btnCancelMysqlConfig');
+    const mysqlForm = document.getElementById('mysqlConfigForm');
+    const btnTestMysql = document.getElementById('btnTestMysqlConnection');
 
-    if (btnOpenCloud && cloudModal) {
-      btnOpenCloud.addEventListener('click', () => {
-        try {
-          const stored = localStorage.getItem('SICEP_CUSTOM_FIREBASE_CONFIG');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (parsed.apiKey) document.getElementById('fbApiKeyInput').value = parsed.apiKey;
-            if (parsed.projectId) document.getElementById('fbProjectIdInput').value = parsed.projectId;
-            if (parsed.authDomain) document.getElementById('fbAuthDomainInput').value = parsed.authDomain;
-            if (parsed.appId) document.getElementById('fbAppIdInput').value = parsed.appId;
-          }
-        } catch (e) {}
-        cloudModal.classList.remove('hidden');
+    if (btnOpenMysql && mysqlModal) {
+      btnOpenMysql.addEventListener('click', () => {
+        if (typeof AppDB !== 'undefined') {
+          document.getElementById('mysqlApiUrlInput').value = AppDB.getApiUrl();
+        }
+        mysqlModal.classList.remove('hidden');
       });
     }
 
-    const hideCloudModal = () => {
-      if (cloudModal) cloudModal.classList.add('hidden');
+    const hideMysqlModal = () => {
+      if (mysqlModal) mysqlModal.classList.add('hidden');
     };
 
-    if (closeCloudBtn) closeCloudBtn.addEventListener('click', hideCloudModal);
-    if (cancelCloudBtn) cancelCloudBtn.addEventListener('click', hideCloudModal);
+    if (closeMysqlBtn) closeMysqlBtn.addEventListener('click', hideMysqlModal);
+    if (cancelMysqlBtn) cancelMysqlBtn.addEventListener('click', hideMysqlModal);
 
-    if (cloudForm) {
-      cloudForm.addEventListener('submit', (e) => {
+    if (mysqlForm) {
+      mysqlForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const apiKey = document.getElementById('fbApiKeyInput').value.trim();
-        const projectId = document.getElementById('fbProjectIdInput').value.trim();
-        const authDomain = document.getElementById('fbAuthDomainInput').value.trim();
-        const appId = document.getElementById('fbAppIdInput').value.trim();
-
-        if (!apiKey || !projectId) {
-          alert('Por favor ingresa al menos la API Key y el Project ID de Firebase.');
-          return;
-        }
-
-        const customConfig = { apiKey, projectId, authDomain, appId };
+        const url = document.getElementById('mysqlApiUrlInput').value.trim();
+        if (!url) return;
         if (typeof AppDB !== 'undefined') {
-          AppDB.saveCustomFirebaseConfig(customConfig);
-          saveState(false);
+          const ok = await AppDB.setApiUrl(url);
           updateDbUI();
+          if (ok) {
+            showToast('✓ Conectado exitosamente al servidor MySQL');
+          } else {
+            showToast('⚠️ No se pudo contactar el servidor en esa URL (Modo Local)');
+          }
         }
-        hideCloudModal();
-        showToast('Credenciales guardadas. Conectando con Firebase Firestore...');
+        hideMysqlModal();
+      });
+    }
+
+    if (btnTestMysql) {
+      btnTestMysql.addEventListener('click', async () => {
+        if (typeof AppDB !== 'undefined') {
+          const ok = await AppDB.checkServerHealth();
+          updateDbUI();
+          if (ok) {
+            showToast('✓ Conexión exitosa con el servidor MySQL');
+          } else {
+            showToast('⚠️ Servidor MySQL no detectado. Abre tu servidor en server/ con npm start');
+          }
+        }
       });
     }
   }
@@ -2378,7 +2377,7 @@
   // Initialize Application on Load
   window.addEventListener('DOMContentLoaded', async () => {
     if (typeof AppDB !== 'undefined') {
-      AppDB.init();
+      await AppDB.init();
       try {
         const res = await AppDB.loadState(buildDefaultState);
         if (res && res.state) {
@@ -2391,16 +2390,5 @@
     setupEventListeners();
     renderAllActiveViews();
     updateDbUI();
-
-    if (typeof AppDB !== 'undefined') {
-      AppDB.listenToRemoteChanges(state, (remoteState) => {
-        if (remoteState && Array.isArray(remoteState.students)) {
-          state = remoteState;
-          renderAllActiveViews();
-          updateDbUI();
-          showToast('☁️ Datos sincronizados en tiempo real desde la nube');
-        }
-      });
-    }
   });
 })();
