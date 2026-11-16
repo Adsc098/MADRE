@@ -91,7 +91,7 @@ class SicepHandler(BaseHTTPRequestHandler):
                     esc = cur.fetchone() or {}
 
                     cur.execute("""
-                        SELECT g.*, d.nombre_completo as docente_nombre, d.usuario 
+                        SELECT g.*, d.nombre_completo as docente_nombre, d.usuario, d.password_pin 
                         FROM grupos g 
                         JOIN docentes d ON g.id_docente = d.id_docente 
                         LIMIT 1
@@ -170,7 +170,7 @@ class SicepHandler(BaseHTTPRequestHandler):
                     "schoolConfig": school_config,
                     "security": {
                         "username": grp.get('usuario', 'cchavarria'),
-                        "password": "***"
+                        "password": grp.get('password_pin', '2026')
                     },
                     "students": students
                 })
@@ -202,7 +202,34 @@ class SicepHandler(BaseHTTPRequestHandler):
                                 school.get('zone'), school.get('region'), school.get('phone'), school.get('address')
                             ))
 
+                            if school.get('teacher'):
+                                cur.execute("UPDATE docentes SET nombre_completo = %s WHERE id_docente = 1", (school.get('teacher'),))
+
+                            grp_str = school.get('group', '6° A')
+                            grado, seccion = '6', 'A'
+                            if '°' in grp_str:
+                                p = grp_str.split('°', 1)
+                                grado, seccion = p[0].strip(), p[1].strip()
+                            elif len(grp_str) >= 2:
+                                grado, seccion = grp_str[0], grp_str[1:].strip()
+
+                            cur.execute("""
+                                UPDATE grupos SET grado = %s, seccion = %s, ciclo_escolar = %s 
+                                WHERE id_grupo = 1
+                            """, (grado, seccion, school.get('cycle', '2026 - 2027')))
+
+                        security = data.get('security')
+                        if security and security.get('username'):
+                            cur.execute("""
+                                UPDATE docentes SET usuario = %s, password_pin = %s 
+                                WHERE id_docente = 1
+                            """, (security.get('username'), security.get('password', '2026')))
+
                         students = data.get('students', [])
+                        if students:
+                            current_nos = [s['no'] for s in students]
+                            format_strings = ','.join(['%s'] * len(current_nos))
+                            cur.execute(f"DELETE FROM alumnos WHERE id_grupo = 1 AND numero_lista NOT IN ({format_strings})", tuple(current_nos))
                         for s in students:
                             cur.execute("SELECT id_alumno FROM alumnos WHERE id_grupo = 1 AND numero_lista = %s", (s['no'],))
                             row = cur.fetchone()

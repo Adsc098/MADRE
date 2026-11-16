@@ -94,6 +94,7 @@ const AppDB = (function () {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             schoolConfig: state.schoolConfig,
+            security: state.security,
             students: state.students
           })
         });
