@@ -176,19 +176,28 @@
   }
 
   function loadState() {
-    // 1. Carga síncrona inmediata desde localStorage para visualización instantánea sin parpadeo
+    const def = buildDefaultState();
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed.students) && parsed.students.length > 0) {
-          return parsed;
+          return {
+            ...def,
+            ...parsed,
+            currentView: parsed.currentView || def.currentView || 'inicio',
+            currentPeriod: parsed.currentPeriod || def.currentPeriod || 'DIAGNOSTICO',
+            searchQuery: parsed.searchQuery || '',
+            schoolConfig: { ...def.schoolConfig, ...(parsed.schoolConfig || {}) },
+            security: { ...def.security, ...(parsed.security || {}) },
+            students: parsed.students
+          };
         }
       }
     } catch (err) {
       console.warn('No se pudo leer localStorage:', err);
     }
-    return buildDefaultState();
+    return def;
   }
 
   function saveState(showFeedback = false, customMsg = 'Guardado automático') {
@@ -299,7 +308,7 @@
 
   // Compute Group-Wide KPIs for the current period
   function computeGroupStats() {
-    const period = state.currentPeriod;
+    const period = state.currentPeriod || 'DIAGNOSTICO';
     const students = state.students;
     const totalStudents = students.length;
 
@@ -512,8 +521,10 @@
       : 'Todas las evaluaciones completas';
 
     // Render Overview Table in Dashboard
-    const filterMode = document.getElementById('dashFilterStatus').value;
-    const query = state.searchQuery.trim().toLowerCase();
+    const filterEl = document.getElementById('dashFilterStatus');
+    const filterMode = filterEl ? filterEl.value : 'ALL';
+    const query = (state.searchQuery || '').trim().toLowerCase();
+    const period = state.currentPeriod || 'DIAGNOSTICO';
     const tbody = document.getElementById('dashOverviewTableBody');
 
     const filteredStudents = state.students.filter(s => {
@@ -777,13 +788,15 @@
   // SECTION 3 RENDERER: CAPTURA DE CALIFICACIONES (CAMPOS FORMATIVOS)
   // ===================================================================
   function renderCapturaTable() {
-    const filterMode = document.getElementById('capturaFilterSelect').value;
-    const query = state.searchQuery.trim().toLowerCase();
-    const period = state.currentPeriod;
+    const filterEl = document.getElementById('capturaFilterSelect');
+    const filterMode = filterEl ? filterEl.value : 'ALL';
+    const query = (state.searchQuery || '').trim().toLowerCase();
+    const period = state.currentPeriod || 'DIAGNOSTICO';
 
-    const filtered = state.students.filter(s => {
+    const filtered = (state.students || []).filter(s => {
       if (query && !s.name.toLowerCase().includes(query) && String(s.no) !== query) return false;
-      const f = calcFormativeRow(s.grades[period]);
+      const g = (s.grades && s.grades[period]) ? s.grades[period] : { lenguajes: null, saberes: null, etica: null, humano: null };
+      const f = calcFormativeRow(g);
       if (filterMode === 'PENDING') return !f.isComplete;
       if (filterMode === 'COMPLETE') return f.isComplete;
       if (filterMode === 'REPROBADO') return f.hasAny && f.prom < 6;
@@ -791,8 +804,9 @@
     });
 
     const tbody = document.getElementById('capturaTableBody');
+    if (!tbody) return;
     tbody.innerHTML = filtered.map(s => {
-      const g = s.grades[period] || { lenguajes: null, saberes: null, etica: null, humano: null };
+      const g = (s.grades && s.grades[period]) ? s.grades[period] : { lenguajes: null, saberes: null, etica: null, humano: null };
       const f = calcFormativeRow(g);
 
       const statusChip = f.isComplete
@@ -865,13 +879,15 @@
   // SECTION 4 RENDERER: CONTROL DE EVALUACIÓN Y PONDERACIONES (100%)
   // ===================================================================
   function renderWeightedTable() {
-    const filterMode = document.getElementById('evalWeightedFilter').value;
-    const query = state.searchQuery.trim().toLowerCase();
-    const period = state.currentPeriod;
+    const filterEl = document.getElementById('evalWeightedFilter');
+    const filterMode = filterEl ? filterEl.value : 'ALL';
+    const query = (state.searchQuery || '').trim().toLowerCase();
+    const period = state.currentPeriod || 'DIAGNOSTICO';
 
-    const filtered = state.students.filter(s => {
+    const filtered = (state.students || []).filter(s => {
       if (query && !s.name.toLowerCase().includes(query) && String(s.no) !== query) return false;
-      const w = calcWeightedRow(s.weighted[period]);
+      const w = (s.weighted && s.weighted[period]) ? s.weighted[period] : null;
+      const calcW = calcWeightedRow(w);
       if (filterMode === 'CAPTURED') return w.hasAny;
       if (filterMode === 'PENDING') return !w.hasAny;
       if (filterMode === 'APROBADO') return w.hasAny && w.estatus === 'APROBADO';
@@ -2381,7 +2397,17 @@
       try {
         const res = await AppDB.loadState(buildDefaultState);
         if (res && res.state) {
-          state = res.state;
+          const def = buildDefaultState();
+          state = {
+            ...def,
+            ...res.state,
+            currentView: state.currentView || res.state.currentView || def.currentView || 'inicio',
+            currentPeriod: state.currentPeriod || res.state.currentPeriod || def.currentPeriod || 'DIAGNOSTICO',
+            searchQuery: state.searchQuery || res.state.searchQuery || '',
+            schoolConfig: { ...def.schoolConfig, ...(res.state.schoolConfig || {}) },
+            security: { ...def.security, ...(res.state.security || {}) },
+            students: (Array.isArray(res.state.students) && res.state.students.length > 0) ? res.state.students : def.students
+          };
         }
       } catch (e) {
         console.warn('DB load error:', e);

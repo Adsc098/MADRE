@@ -164,6 +164,9 @@ class SicepHandler(BaseHTTPRequestHandler):
 
                 conn.close()
                 self._send_json(200, {
+                    "currentView": "inicio",
+                    "currentPeriod": "DIAGNOSTICO",
+                    "searchQuery": "",
                     "schoolConfig": school_config,
                     "security": {
                         "username": grp.get('usuario', 'cchavarria'),
