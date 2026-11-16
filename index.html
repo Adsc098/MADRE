@@ -1257,28 +1257,110 @@
   <!--         Conversion Tables Hoja 3, and Teacher Login/Lock Screen)      -->
   <!-- ===================================================================== -->
 
-  <!-- Modal 1: Expediente / Consulta Individual y Boleta del Alumno -->
+  <!-- Modal 1: Expediente, Boleta y Bitácora de Comportamiento del Alumno -->
   <div id="studentDetailModal" class="hidden fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="glass-card bg-stone-50/95 rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-white max-h-[90vh] overflow-y-auto">
-      <div class="flex items-start justify-between gap-3 pb-3 border-b border-stone-300">
+    <div class="glass-card bg-stone-50/95 rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-white max-h-[92vh] flex flex-col">
+      <!-- Modal Header -->
+      <div class="flex items-start justify-between gap-3 pb-3 border-b border-stone-300 shrink-0">
         <div>
           <span id="modalStudentNoBadge" class="px-2.5 py-0.5 rounded-full bg-stone-900 text-amber-200 text-xs font-bold">Lista #1</span>
           <h3 id="modalStudentName" class="text-xl font-extrabold text-stone-900 mt-1">ACOSTA MATEOS ITZEL ALEJANDRA</h3>
           <p id="modalStudentMeta" class="text-xs text-stone-600">6° "A" · Ciclo Escolar 2026 - 2027</p>
         </div>
-        <button id="closeStudentDetailModalBtn" type="button" class="w-8 h-8 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold text-sm flex items-center justify-center">✕</button>
+        <button id="closeStudentDetailModalBtn" type="button" class="w-8 h-8 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold text-sm flex items-center justify-center cursor-pointer">✕</button>
       </div>
 
-      <div id="modalStudentBodyContent" class="my-4 space-y-4 text-xs"></div>
+      <!-- Navigation Tabs inside Modal -->
+      <div class="flex items-center gap-2 mt-3 border-b border-stone-200 pb-2 shrink-0">
+        <button type="button" id="tabBtnStudentGrades" class="px-4 py-1.5 rounded-full text-xs font-bold bg-stone-900 text-white transition cursor-pointer">
+          📊 Calificaciones y Boleta
+        </button>
+        <button type="button" id="tabBtnStudentIncidents" class="px-4 py-1.5 rounded-full text-xs font-bold bg-stone-200 hover:bg-stone-300 text-stone-800 transition flex items-center gap-1.5 cursor-pointer">
+          <span>📋 Bitácora de Comportamiento y Reportes</span>
+          <span id="modalIncidentBadgeCount" class="px-2 py-0.5 rounded-full bg-amber-500 text-stone-950 font-black text-[10px]">0</span>
+        </button>
+      </div>
 
-      <div class="pt-3 border-t border-stone-300 flex flex-wrap items-center justify-between gap-2">
+      <!-- Scrollable Tab Content Container -->
+      <div class="overflow-y-auto flex-1 my-3 pr-1 space-y-4">
+        <!-- Tab 1: Calificaciones y Boleta -->
+        <div id="tabContentStudentGrades" class="space-y-4 text-xs">
+          <div id="modalStudentBodyContent"></div>
+        </div>
+
+        <!-- Tab 2: Bitácora de Comportamiento e Incidencias -->
+        <div id="tabContentStudentIncidents" class="hidden space-y-4 text-xs">
+          <!-- Form to add new incident -->
+          <div class="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 shadow-sm">
+            <h4 class="font-bold text-stone-900 text-xs flex items-center gap-1.5 mb-3">
+              <span>✍️ Registrar Nuevo Reporte / Incidencia de la Maestra</span>
+            </h4>
+            <form id="addIncidentForm" class="space-y-3">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label for="incDateTimeInput" class="block font-bold text-stone-700 mb-1">Fecha y Hora</label>
+                  <input id="incDateTimeInput" type="datetime-local" required class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 font-semibold text-xs text-stone-800" />
+                </div>
+                <div>
+                  <label for="incTypeSelect" class="block font-bold text-stone-700 mb-1">Tipo de Incidencia</label>
+                  <select id="incTypeSelect" class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 font-semibold text-xs text-stone-800">
+                    <option value="tarea">📝 Tarea no entregada / Incompleta</option>
+                    <option value="conducta">⚠️ Indisciplina / Conducta en el aula</option>
+                    <option value="asistencia">⏰ Retardo / Inasistencia</option>
+                    <option value="felicitacion">⭐ Reconocimiento / Felicitación</option>
+                    <option value="citatorio">📞 Citatorio a Padre de Familia</option>
+                    <option value="observacion">📌 Observación general</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="incSubjectInput" class="block font-bold text-stone-700 mb-1">Materia o Momento</label>
+                  <input id="incSubjectInput" type="text" placeholder="Ej: Matemáticas, Recreo, Honores..." class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 text-xs text-stone-800 font-semibold" />
+                </div>
+              </div>
+
+              <div>
+                <label for="incDescInput" class="block font-bold text-stone-700 mb-1">Descripción de lo ocurrido (Reporte)</label>
+                <textarea id="incDescInput" rows="2" required placeholder="Describe lo que realizó el alumno (Ej: No entregó la tarea de la página 45 de Español; o estuvo distrayendo la clase y no concluyó la actividad)..." class="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-xs text-stone-800 focus:outline-none focus:ring-1 focus:ring-stone-900"></textarea>
+              </div>
+
+              <div>
+                <label for="incAgreementInput" class="block font-bold text-stone-700 mb-1">Compromiso o Acuerdo con el Alumno / Papás (Opcional)</label>
+                <input id="incAgreementInput" type="text" placeholder="Ej: Se comprometió a entregarla el día de mañana firmada por su mamá..." class="w-full bg-white border border-stone-300 rounded-xl px-3 py-1.5 text-xs text-stone-800 font-medium" />
+              </div>
+
+              <div class="flex items-center justify-between pt-1">
+                <span class="text-[11px] text-stone-500">Se guardará automáticamente en MySQL.</span>
+                <button type="submit" id="btnSubmitIncident" class="px-5 py-2 rounded-full bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs shadow transition cursor-pointer flex items-center gap-1.5">
+                  <span>Guardar Reporte en Bitácora</span>
+                  <span>✓</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Incidents History Header -->
+          <div class="flex items-center justify-between pt-2">
+            <h4 class="font-bold text-stone-900 text-xs">Historial Cronológico de Reportes</h4>
+            <span id="incidentCountSummary" class="text-[11px] font-semibold text-stone-600">0 reportes</span>
+          </div>
+
+          <!-- Timeline Container -->
+          <div id="incidentsTimelineList" class="space-y-2.5"></div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="pt-3 border-t border-stone-300 flex flex-wrap items-center justify-between gap-2 shrink-0">
         <div class="flex items-center gap-2">
-          <button id="modalPrevStudentBtn" type="button" class="px-3 py-1.5 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-semibold">← Anterior</button>
-          <button id="modalNextStudentBtn" type="button" class="px-3 py-1.5 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-semibold">Siguiente →</button>
+          <button id="modalPrevStudentBtn" type="button" class="px-3 py-1.5 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-semibold cursor-pointer">← Anterior</button>
+          <button id="modalNextStudentBtn" type="button" class="px-3 py-1.5 rounded-full bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-semibold cursor-pointer">Siguiente →</button>
         </div>
         <div class="flex items-center gap-2">
-          <button id="modalDownloadIndividualPdfBtn" type="button" class="px-4 py-2 rounded-full bg-stone-900 hover:bg-stone-800 text-amber-100 text-xs font-bold">
-            📄 Descargar Reporte Individual PDF
+          <button id="modalDownloadIndividualPdfBtn" type="button" class="px-4 py-2 rounded-full bg-stone-900 hover:bg-stone-800 text-amber-100 text-xs font-bold cursor-pointer">
+            📄 Boleta Individual PDF
+          </button>
+          <button id="modalPrintBitacoraBtn" type="button" class="px-4 py-2 rounded-full bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold cursor-pointer flex items-center gap-1.5">
+            🖨️ Imprimir Bitácora del Alumno
           </button>
         </div>
       </div>

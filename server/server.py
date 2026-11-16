@@ -150,6 +150,15 @@ class SicepHandler(BaseHTTPRequestHandler):
                                 "disciplina": float(w['disciplina']) if w and w['disciplina'] is not None else None
                             }
 
+                        cur.execute("""
+                            SELECT id_incidencia, id_alumno, DATE_FORMAT(fecha_hora, '%%Y-%%m-%%d %%H:%%i') as fecha_hora, 
+                                   tipo, materia_momento, descripcion, compromiso_acuerdo, registrado_por
+                            FROM incidencias_alumno 
+                            WHERE id_alumno = %s 
+                            ORDER BY fecha_hora DESC
+                        """, (aid,))
+                        incidents = cur.fetchall()
+
                         students.append({
                             "id": f"stu_{a['numero_lista']}",
                             "id_bd": aid,
@@ -159,7 +168,8 @@ class SicepHandler(BaseHTTPRequestHandler):
                             "group": school_config['group'],
                             "notes": a.get('notas_observaciones', '') or '',
                             "grades": grades_by_period,
-                            "weighted": weighted_by_period
+                            "weighted": weighted_by_period,
+                            "incidents": incidents
                         })
 
                 conn.close()
@@ -210,6 +220,64 @@ class SicepHandler(BaseHTTPRequestHandler):
                     conn.close()
             except Exception as e:
                 self._send_json(500, {"error": str(e)})
+        elif parsed_path == '/api/incidencias/crear':
+            try:
+                content_len = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(content_len)
+                data = json.loads(body.decode('utf-8'))
+                aid = data.get('id_alumno')
+                fecha_hora = data.get('fecha_hora')
+                tipo = data.get('tipo', 'observacion')
+                materia = data.get('materia_momento', '')
+                desc = data.get('descripcion', '')
+                acuerdo = data.get('compromiso_acuerdo', '')
+                registrado = data.get('registrado_por', 'Profra. Claudia Chavarría')
+
+                conn = get_db_connection()
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute("""
+                            INSERT INTO incidencias_alumno (id_alumno, fecha_hora, tipo, materia_momento, descripcion, compromiso_acuerdo, registrado_por)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        """, (aid, fecha_hora, tipo, materia, desc, acuerdo, registrado))
+                        new_id = cur.lastrowid
+                    conn.commit()
+                    self._send_json(200, {
+                        "success": True,
+                        "incidencia": {
+                            "id_incidencia": new_id,
+                            "id_alumno": aid,
+                            "fecha_hora": fecha_hora,
+                            "tipo": tipo,
+                            "materia_momento": materia,
+                            "descripcion": desc,
+                            "compromiso_acuerdo": acuerdo,
+                            "registrado_por": registrado
+                        }
+                    })
+                finally:
+                    conn.close()
+            except Exception as e:
+                self._send_json(500, {"error": str(e)})
+
+        elif parsed_path == '/api/incidencias/eliminar':
+            try:
+                content_len = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(content_len)
+                data = json.loads(body.decode('utf-8'))
+                iid = data.get('id_incidencia')
+
+                conn = get_db_connection()
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute("DELETE FROM incidencias_alumno WHERE id_incidencia = %s", (iid,))
+                    conn.commit()
+                    self._send_json(200, {"success": True})
+                finally:
+                    conn.close()
+            except Exception as e:
+                self._send_json(500, {"error": str(e)})
+
         elif parsed_path == '/api/guardar':
             try:
                 content_len = int(self.headers.get('Content-Length', 0))

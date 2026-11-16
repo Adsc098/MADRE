@@ -800,6 +800,9 @@
             <button type="button" data-open-student="${s.id}" class="px-2.5 py-1 rounded-full bg-stone-900 text-white text-[11px] font-semibold hover:bg-stone-800">
               Consultar
             </button>
+            <button type="button" data-open-incident="${s.id}" class="px-2.5 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-950 text-[11px] font-bold hover:bg-amber-200 transition">
+              📋 Bitácora ${(s.incidents && s.incidents.length > 0) ? `(${s.incidents.length})` : ''}
+            </button>
             <button type="button" data-edit-student="${s.id}" class="px-2.5 py-1 rounded-full bg-white border border-stone-300 text-stone-800 text-[11px] font-semibold hover:bg-stone-100">
               Editar
             </button>
@@ -1258,12 +1261,208 @@
   }
 
   // ===================================================================
-  // INDIVIDUAL STUDENT MODAL RENDERER
+  // INDIVIDUAL STUDENT MODAL & BITACORA RENDERER
   // ===================================================================
-  function openStudentDetailModal(studentId) {
+  let activeStudentModalTab = 'grades';
+
+  function switchStudentModalTab(tabName) {
+    activeStudentModalTab = tabName;
+    const btnGrades = document.getElementById('tabBtnStudentGrades');
+    const btnInc = document.getElementById('tabBtnStudentIncidents');
+    const contentGrades = document.getElementById('tabContentStudentGrades');
+    const contentInc = document.getElementById('tabContentStudentIncidents');
+
+    if (!btnGrades || !btnInc || !contentGrades || !contentInc) return;
+
+    if (tabName === 'incidents') {
+      btnGrades.className = 'px-4 py-1.5 rounded-full text-xs font-bold bg-stone-200 hover:bg-stone-300 text-stone-800 transition cursor-pointer';
+      btnInc.className = 'px-4 py-1.5 rounded-full text-xs font-bold bg-stone-900 text-white transition cursor-pointer flex items-center gap-1.5';
+      contentGrades.classList.add('hidden');
+      contentInc.classList.remove('hidden');
+    } else {
+      btnGrades.className = 'px-4 py-1.5 rounded-full text-xs font-bold bg-stone-900 text-white transition cursor-pointer';
+      btnInc.className = 'px-4 py-1.5 rounded-full text-xs font-bold bg-stone-200 hover:bg-stone-300 text-stone-800 transition cursor-pointer flex items-center gap-1.5';
+      contentGrades.classList.remove('hidden');
+      contentInc.classList.add('hidden');
+    }
+  }
+
+  function renderStudentIncidentsTimeline(s) {
+    const listEl = document.getElementById('incidentsTimelineList');
+    const countSummary = document.getElementById('incidentCountSummary');
+    const badgeCount = document.getElementById('modalIncidentBadgeCount');
+    if (!listEl) return;
+
+    const incidents = s.incidents || [];
+    if (badgeCount) badgeCount.textContent = incidents.length;
+    if (countSummary) {
+      countSummary.textContent = incidents.length === 1 ? '1 reporte registrado' : `${incidents.length} reportes registrados`;
+    }
+
+    if (incidents.length === 0) {
+      listEl.innerHTML = `
+        <div class="text-center py-8 px-4 bg-white rounded-2xl border border-dashed border-stone-300 text-stone-500">
+          <div class="text-2xl mb-1">📋</div>
+          <p class="font-bold text-stone-700">Sin reportes registrados</p>
+          <p class="text-[11px] text-stone-500 mt-0.5">Este alumno no cuenta con incidencias registradas en la bitácora aún. Puedes agregar una arriba.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const typeConfig = {
+      tarea: { icon: '📝', label: 'Tarea No Entregada / Incompleta', badge: 'bg-amber-100 text-amber-900 border-amber-300' },
+      conducta: { icon: '⚠️', label: 'Indisciplina / Conducta', badge: 'bg-rose-100 text-rose-900 border-rose-300' },
+      asistencia: { icon: '⏰', label: 'Retardo / Inasistencia', badge: 'bg-blue-100 text-blue-900 border-blue-300' },
+      felicitacion: { icon: '⭐', label: 'Reconocimiento / Mérito', badge: 'bg-emerald-100 text-emerald-900 border-emerald-300' },
+      citatorio: { icon: '📞', label: 'Citatorio a Padre de Familia', badge: 'bg-indigo-100 text-indigo-900 border-indigo-300' },
+      observacion: { icon: '📌', label: 'Observación General', badge: 'bg-stone-200 text-stone-800 border-stone-300' }
+    };
+
+    listEl.innerHTML = incidents.map(inc => {
+      const cfg = typeConfig[inc.tipo] || typeConfig.observacion;
+      const dateFormatted = inc.fecha_hora ? inc.fecha_hora.replace('T', ' ') : 'Fecha no especificada';
+
+      return `
+        <div class="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm hover:border-amber-300 transition text-xs space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${cfg.badge} flex items-center gap-1">
+                <span>${cfg.icon}</span>
+                <span>${cfg.label}</span>
+              </span>
+              ${inc.materia_momento ? `<span class="px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 text-[10px] font-semibold border border-stone-200">${inc.materia_momento}</span>` : ''}
+            </div>
+            <div class="flex items-center gap-2 text-stone-500 text-[11px]">
+              <span class="font-mono font-semibold">${dateFormatted} hrs</span>
+              <button type="button" data-delete-incident="${inc.id_incidencia}" title="Eliminar reporte de bitácora" class="text-rose-600 hover:text-rose-800 font-bold p-1 hover:bg-rose-50 rounded-lg transition cursor-pointer">
+                🗑️
+              </button>
+            </div>
+          </div>
+
+          <div class="text-stone-800 leading-relaxed font-normal text-xs whitespace-pre-line">
+            ${inc.descripcion}
+          </div>
+
+          ${inc.compromiso_acuerdo ? `
+            <div class="bg-amber-50/70 border-l-2 border-amber-500 rounded-r-xl p-2.5 text-[11px] text-amber-950 font-medium">
+              <span class="font-bold">Compromiso / Acuerdo:</span> ${inc.compromiso_acuerdo}
+            </div>
+          ` : ''}
+
+          <div class="text-[10px] text-stone-400 flex items-center justify-between pt-1">
+            <span>Registrado por: <strong>${inc.registrado_por || 'Profra. Claudia Chavarría'}</strong></span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function exportStudentBitacoraPdf(s) {
+    if (typeof jspdf === 'undefined' && typeof window.jspdf === 'undefined') {
+      showToast('Librería PDF no disponible en este momento');
+      return;
+    }
+    const { jsPDF } = window.jspdf || jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+    const cfg = state.schoolConfig;
+
+    // Header
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(cfg.schoolType || 'ESCUELA PRIMARIA FEDERAL', 105, 15, { align: 'center' });
+    doc.setFontSize(13);
+    doc.text(cfg.schoolName || 'SALVADOR ZUBIRAN ANCHONDO T. M.', 105, 21, { align: 'center' });
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`C.C.T. ${cfg.cct}  ·  ZONA: ${cfg.zone}  ·  REGIÓN: ${cfg.region}  ·  TEL: ${cfg.phone}`, 105, 26, { align: 'center' });
+
+    doc.setDrawColor(44, 37, 32);
+    doc.setLineWidth(0.5);
+    doc.line(14, 29, 202, 29);
+
+    // Title
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('BITÁCORA DE SEGUIMIENTO, CONDUCTA E INCIDENCIAS ESCOLARES', 105, 36, { align: 'center' });
+
+    // Student Meta Card
+    doc.setFillColor(248, 246, 243);
+    doc.roundedRect(14, 40, 188, 20, 2, 2, 'F');
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Alumno: ${s.no}. ${s.name}`, 18, 47);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Grado y Grupo: ${s.group}   |   Ciclo Escolar: ${cfg.cycle}   |   Género: ${s.gender === 'M' ? 'Mujer' : 'Hombre'}`, 18, 54);
+    doc.text(`Docente: ${cfg.teacher}`, 140, 54);
+
+    const incidents = s.incidents || [];
+    const tableData = incidents.map(inc => {
+      const typeLabels = {
+        tarea: 'Tarea No Entregada',
+        conducta: 'Indisciplina / Conducta',
+        asistencia: 'Retardo / Falta',
+        felicitacion: 'Reconocimiento',
+        citatorio: 'Citatorio Padres',
+        observacion: 'Observación'
+      };
+      const tipo = typeLabels[inc.tipo] || inc.tipo;
+      const momento = inc.materia_momento ? ` (${inc.materia_momento})` : '';
+      let desc = inc.descripcion || '';
+      if (inc.compromiso_acuerdo) {
+        desc += `
+[Acuerdo: ${inc.compromiso_acuerdo}]`;
+      }
+      return [inc.fecha_hora || '', tipo + momento, desc];
+    });
+
+    if (tableData.length === 0) {
+      tableData.push(['-', 'Sin reportes', 'El alumno no presenta reportes de incidencias o conducta registrados a la fecha.']);
+    }
+
+    doc.autoTable({
+      startY: 65,
+      head: [['Fecha y Hora', 'Tipo de Incidencia', 'Descripción de lo ocurrido y Acuerdos']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [44, 37, 32], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+      styles: { fontSize: 8.5, cellPadding: 3.5, overflow: 'linebreak' },
+      columnStyles: {
+        0: { cellWidth: 35 },
+        1: { cellWidth: 45, fontStyle: 'bold' },
+        2: { cellWidth: 108 }
+      }
+    });
+
+    const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 30 : 200;
+    const signY = Math.min(finalY, 240);
+
+    // Signatures
+    doc.setLineWidth(0.4);
+    doc.line(25, signY, 90, signY);
+    doc.line(125, signY, 190, signY);
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text(cfg.teacher || 'Docente Titular', 57.5, signY + 5, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.text('Docente Frente a Grupo', 57.5, signY + 9, { align: 'center' });
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Padre, Madre o Tutor', 157.5, signY + 5, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.text('Firma de Enterado', 157.5, signY + 9, { align: 'center' });
+
+    doc.save(`Bitacora_Incidencias_${s.no}_${s.name.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20)}.pdf`);
+    showToast('Bitácora PDF descargada correctamente');
+  }
+
+  function openStudentDetailModal(studentId, initialTab = 'grades') {
     const s = state.students.find(x => x.id === studentId);
     if (!s) return;
     activeStudentModalId = s.id;
+    if (!s.incidents) s.incidents = [];
 
     const period = state.currentPeriod;
     const g = s.grades[period] || {};
@@ -1275,6 +1474,14 @@
     document.getElementById('modalStudentName').textContent = s.name;
     document.getElementById('modalStudentMeta').textContent = `Grado y Grupo: ${s.group} · Ciclo Escolar ${state.schoolConfig.cycle} · Periodo: ${period}`;
 
+    // Fill current local datetime in input (YYYY-MM-DDTHH:MM)
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(now - offset)).toISOString().slice(0, 16);
+    const dtInput = document.getElementById('incDateTimeInput');
+    if (dtInput) dtInput.value = localISOTime;
+
+    // Render grades tab
     const body = document.getElementById('modalStudentBodyContent');
     body.innerHTML = `
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -1308,6 +1515,12 @@
         </div>
       </div>
     `;
+
+    // Render Incidents Tab
+    renderStudentIncidentsTimeline(s);
+
+    // Switch Tab
+    switchStudentModalTab(initialTab === 'bitacora' ? 'incidents' : 'grades');
 
     document.getElementById('studentDetailModal').classList.remove('hidden');
   }
@@ -1771,7 +1984,13 @@
 
       const openStuBtn = e.target.closest('[data-open-student]');
       if (openStuBtn) {
-        openStudentDetailModal(openStuBtn.dataset.openStudent);
+        openStudentDetailModal(openStuBtn.dataset.openStudent, 'grades');
+        return;
+      }
+
+      const openIncBtn = e.target.closest('[data-open-incident]');
+      if (openIncBtn) {
+        openStudentDetailModal(openIncBtn.dataset.openIncident, 'incidents');
         return;
       }
 
@@ -2064,6 +2283,113 @@
     document.getElementById('closeConversionModalBtn').addEventListener('click', () => {
       document.getElementById('conversionTablesModal').classList.add('hidden');
     });
+
+    // Bitacora Tab Switchers
+    const btnTabGrades = document.getElementById('tabBtnStudentGrades');
+    const btnTabInc = document.getElementById('tabBtnStudentIncidents');
+    if (btnTabGrades) btnTabGrades.addEventListener('click', () => switchStudentModalTab('grades'));
+    if (btnTabInc) btnTabInc.addEventListener('click', () => switchStudentModalTab('incidents'));
+
+    // Add Incident Form Submission
+    const addIncForm = document.getElementById('addIncidentForm');
+    if (addIncForm) {
+      addIncForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const s = state.students.find(x => x.id === activeStudentModalId);
+        if (!s) return;
+
+        const dtVal = document.getElementById('incDateTimeInput').value.replace('T', ' ');
+        const tipoVal = document.getElementById('incTypeSelect').value;
+        const subjVal = document.getElementById('incSubjectInput').value.trim();
+        const descVal = document.getElementById('incDescInput').value.trim();
+        const agreeVal = document.getElementById('incAgreementInput').value.trim();
+
+        if (!descVal) return;
+
+        const incPayload = {
+          id_alumno: s.id_bd || s.no,
+          fecha_hora: dtVal,
+          tipo: tipoVal,
+          materia_momento: subjVal,
+          descripcion: descVal,
+          compromiso_acuerdo: agreeVal,
+          registrado_por: (state.schoolConfig && state.schoolConfig.teacher) ? state.schoolConfig.teacher : 'Profra. Claudia Chavarría'
+        };
+
+        const submitBtn = document.getElementById('btnSubmitIncident');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<span>Guardando...</span>';
+        }
+
+        let createdInc = null;
+        if (typeof AppDB !== 'undefined') {
+          try {
+            createdInc = await AppDB.createIncident(incPayload);
+          } catch (err) {
+            console.error('Error guardando en BD:', err);
+          }
+        }
+        if (!createdInc) {
+          createdInc = { id_incidencia: 'local_' + Date.now(), ...incPayload };
+        }
+
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<span>Guardar Reporte en Bitácora</span><span>✓</span>';
+        }
+
+        if (!s.incidents) s.incidents = [];
+        s.incidents.unshift(createdInc);
+
+        saveState(false);
+        renderStudentIncidentsTimeline(s);
+        renderStudentDirectory();
+
+        // Clear inputs
+        document.getElementById('incDescInput').value = '';
+        document.getElementById('incAgreementInput').value = '';
+        showToast('✓ Reporte de bitácora registrado exitosamente');
+      });
+    }
+
+    // Delete Incident Event Delegation
+    const incList = document.getElementById('incidentsTimelineList');
+    if (incList) {
+      incList.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-delete-incident]');
+        if (!btn) return;
+        const incId = btn.dataset.deleteIncident;
+        if (!confirm('¿Deseas eliminar este reporte de la bitácora?')) return;
+
+        const s = state.students.find(x => x.id === activeStudentModalId);
+        if (!s || !s.incidents) return;
+
+        if (typeof AppDB !== 'undefined') {
+          try {
+            await AppDB.deleteIncident(incId);
+          } catch (err) {
+            console.error('Error eliminando en BD:', err);
+          }
+        }
+
+        s.incidents = s.incidents.filter(x => String(x.id_incidencia) !== String(incId));
+        saveState(false);
+        renderStudentIncidentsTimeline(s);
+        renderStudentDirectory();
+        showToast('Reporte eliminado de la bitácora');
+      });
+    }
+
+    // Print Bitacora Button
+    const btnPrintBitacora = document.getElementById('modalPrintBitacoraBtn');
+    if (btnPrintBitacora) {
+      btnPrintBitacora.addEventListener('click', () => {
+        const s = state.students.find(x => x.id === activeStudentModalId);
+        if (!s) return;
+        exportStudentBitacoraPdf(s);
+      });
+    }
 
     // Student Detail Modal Controls
     document.getElementById('closeStudentDetailModalBtn').addEventListener('click', () => {

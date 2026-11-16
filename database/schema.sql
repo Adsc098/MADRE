@@ -13,6 +13,7 @@ USE sicep_escolar;
 
 -- Desactivar temporalmente revisión de llaves foráneas para re-creación limpia
 SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS incidencias_alumno;
 DROP TABLE IF EXISTS ponderaciones_periodo;
 DROP TABLE IF EXISTS calificaciones_periodo;
 DROP TABLE IF EXISTS campos_formativos;
@@ -135,6 +136,23 @@ CREATE TABLE ponderaciones_periodo (
   actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (id_alumno) REFERENCES alumnos(id_alumno) ON DELETE CASCADE,
   UNIQUE KEY uk_ponderacion_alumno_periodo (id_alumno, periodo)
+) ENGINE=InnoDB;
+
+-- -----------------------------------------------------------------------------
+-- 8. TABLA: incidencias_alumno (Bitácora de Comportamiento, Tareas y Reportes)
+-- Registra eventos con fecha, hora, tipo de incidencia, descripción y acuerdos
+-- -----------------------------------------------------------------------------
+CREATE TABLE incidencias_alumno (
+  id_incidencia INT AUTO_INCREMENT PRIMARY KEY,
+  id_alumno INT NOT NULL,
+  fecha_hora DATETIME NOT NULL,
+  tipo VARCHAR(60) NOT NULL DEFAULT 'Observación General',
+  materia_momento VARCHAR(100) NULL,
+  descripcion TEXT NOT NULL,
+  compromiso_acuerdo TEXT NULL,
+  registrado_por VARCHAR(100) DEFAULT 'Docente',
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_alumno) REFERENCES alumnos(id_alumno) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- =============================================================================

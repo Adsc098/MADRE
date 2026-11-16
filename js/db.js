@@ -147,11 +147,51 @@ const AppDB = (function () {
     return null; // Requiere validación local
   }
 
+  async function createIncident(data) {
+    if (currentMode === 'mysql') {
+      try {
+        const res = await fetch(`${apiUrl}/incidencias/crear`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (res.ok) {
+          const jsonRes = await res.json();
+          return jsonRes.incidencia;
+        }
+      } catch (e) {
+        console.warn('⚠️ Error al crear incidencia en MySQL:', e);
+      }
+    }
+    // Fallback ID local
+    return {
+      id_incidencia: 'local_' + Date.now(),
+      ...data
+    };
+  }
+
+  async function deleteIncident(id_incidencia) {
+    if (currentMode === 'mysql') {
+      try {
+        await fetch(`${apiUrl}/incidencias/eliminar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_incidencia })
+        });
+      } catch (e) {
+        console.warn('⚠️ Error al eliminar incidencia en MySQL:', e);
+      }
+    }
+    return true;
+  }
+
   return {
     init,
     loadState,
     saveState,
     login,
+    createIncident,
+    deleteIncident,
     getMode,
     getApiUrl,
     setApiUrl,
