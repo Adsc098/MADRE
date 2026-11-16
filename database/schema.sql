@@ -243,3 +243,4 @@ SELECT
 FROM alumnos a
 JOIN calificaciones_periodo c ON a.id_alumno = c.id_alumno
 WHERE c.promedio_periodo < 6.0;
+SELECT * FROM alumnos;
