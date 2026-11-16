@@ -138,7 +138,35 @@
     trend: null
   };
 
+  const SESSION_AUTH_KEY = 'SICEP_LOGGED_IN_USER';
+
+  function checkSessionAuth() {
+    const modal = document.getElementById('authLockModal');
+    const teacherPill = document.getElementById('topTeacherNamePill');
+    const teacherText = document.getElementById('topTeacherNameText');
+
+    if (teacherText && state.schoolConfig) {
+      teacherText.textContent = state.schoolConfig.teacher || 'Docente';
+    }
+
+    const sessionUser = sessionStorage.getItem(SESSION_AUTH_KEY);
+    if (sessionUser) {
+      if (modal) modal.classList.add('hidden');
+      if (teacherPill) teacherPill.classList.remove('hidden');
+    } else {
+      if (modal) {
+        modal.classList.remove('hidden');
+        const userInput = document.getElementById('loginUsernameInput');
+        if (userInput && !userInput.value) {
+          userInput.value = (state.security && state.security.username) ? state.security.username : 'cchavarria';
+        }
+      }
+      if (teacherPill) teacherPill.classList.add('hidden');
+    }
+  }
+
   function updateDbUI() {
+    checkSessionAuth();
     const modeBadge = document.getElementById('dbModeBadge');
     const apiUrlLabel = document.getElementById('dbApiUrlLabel');
     const syncStatusText = document.getElementById('dbSyncStatusText');
@@ -2241,26 +2269,77 @@
       saveState(true, 'Credenciales de seguridad actualizadas');
     });
 
-    // Lock Session & Login Modal
-    document.getElementById('lockSessionBtn').addEventListener('click', () => {
-      document.getElementById('loginPasswordInput').value = '';
-      document.getElementById('loginErrorMsg').classList.add('hidden');
-      document.getElementById('authLockModal').classList.remove('hidden');
-    });
-
-    document.getElementById('authLoginForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const u = document.getElementById('loginUsernameInput').value.trim();
-      const p = document.getElementById('loginPasswordInput').value.trim();
-      if (u === state.security.username && p === state.security.password) {
-        document.getElementById('authLockModal').classList.add('hidden');
-        showToast('Sesión desbloqueada · Bienvenida Profra. ' + state.schoolConfig.teacher);
-      } else {
+    // Lock Session / Logout & Login Modal
+    const lockBtn = document.getElementById('lockSessionBtn');
+    if (lockBtn) {
+      lockBtn.addEventListener('click', () => {
+        sessionStorage.removeItem(SESSION_AUTH_KEY);
+        const pwdInput = document.getElementById('loginPasswordInput');
+        if (pwdInput) pwdInput.value = '';
         const errEl = document.getElementById('loginErrorMsg');
-        errEl.textContent = 'Usuario o contraseña incorrectos (Por defecto: cchavarria / 2026)';
-        errEl.classList.remove('hidden');
-      }
-    });
+        if (errEl) errEl.classList.add('hidden');
+        checkSessionAuth();
+        showToast('Sesión cerrada correctamente');
+      });
+    }
+
+    const authForm = document.getElementById('authLoginForm');
+    if (authForm) {
+      authForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const u = document.getElementById('loginUsernameInput').value.trim();
+        const p = document.getElementById('loginPasswordInput').value.trim();
+        const errEl = document.getElementById('loginErrorMsg');
+        const submitBtn = document.getElementById('loginSubmitBtn');
+
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<span>Verificando...</span>';
+        }
+
+        let authenticated = false;
+        let teacherName = (state.schoolConfig && state.schoolConfig.teacher) ? state.schoolConfig.teacher : 'Docente';
+
+        // 1. Validar contra el servidor MySQL
+        if (typeof AppDB !== 'undefined' && AppDB.getMode() === 'mysql') {
+          const res = await AppDB.login(u, p);
+          if (res && res.success) {
+            authenticated = true;
+            if (res.docente && res.docente.nombre) {
+              teacherName = res.docente.nombre;
+            }
+          } else if (res && res.success === false) {
+            authenticated = false;
+          }
+        }
+
+        // 2. Validación de respaldo local
+        if (!authenticated && state.security && u === state.security.username && p === state.security.password) {
+          authenticated = true;
+        }
+
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<span>Acceder al Sistema</span><span>→</span>';
+        }
+
+        if (authenticated) {
+          sessionStorage.setItem(SESSION_AUTH_KEY, u);
+          document.getElementById('authLockModal').classList.add('hidden');
+          if (errEl) errEl.classList.add('hidden');
+          const teacherPill = document.getElementById('topTeacherNamePill');
+          if (teacherPill) teacherPill.classList.remove('hidden');
+          const teacherText = document.getElementById('topTeacherNameText');
+          if (teacherText) teacherText.textContent = teacherName;
+          showToast('✓ Sesión iniciada · Bienvenida Profra. ' + teacherName);
+        } else {
+          if (errEl) {
+            errEl.textContent = 'Usuario o contraseña incorrectos. Verifica tus credenciales.';
+            errEl.classList.remove('hidden');
+          }
+        }
+      });
+    }
 
     // Database JSON Backup & Restore
     document.getElementById('btnExportBackupJson').addEventListener('click', () => {
@@ -2416,5 +2495,6 @@
     setupEventListeners();
     renderAllActiveViews();
     updateDbUI();
+    checkSessionAuth();
   });
 })();

@@ -181,7 +181,36 @@ class SicepHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         parsed_path = self.path.split('?')[0].rstrip('/')
-        if parsed_path == '/api/guardar':
+        if parsed_path == '/api/auth/login':
+            try:
+                content_len = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(content_len)
+                data = json.loads(body.decode('utf-8'))
+                user = data.get('username', '').strip()
+                pwd = data.get('password', '').strip()
+
+                conn = get_db_connection()
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute("SELECT * FROM docentes WHERE usuario = %s AND activo = 1", (user,))
+                        docente = cur.fetchone()
+                        if docente and str(docente.get('password_pin')) == pwd:
+                            self._send_json(200, {
+                                "success": True,
+                                "docente": {
+                                    "id": docente['id_docente'],
+                                    "nombre": docente['nombre_completo'],
+                                    "usuario": docente['usuario'],
+                                    "rol": docente['rol']
+                                }
+                            })
+                        else:
+                            self._send_json(401, {"success": False, "error": "Usuario o contraseña incorrectos"})
+                finally:
+                    conn.close()
+            except Exception as e:
+                self._send_json(500, {"error": str(e)})
+        elif parsed_path == '/api/guardar':
             try:
                 content_len = int(self.headers.get('Content-Length', 0))
                 body = self.rfile.read(content_len)

@@ -125,10 +125,33 @@ const AppDB = (function () {
     return checkServerHealth();
   }
 
+  async function login(username, password) {
+    if (currentMode === 'mysql') {
+      try {
+        const res = await fetch(`${apiUrl}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          return { success: true, docente: data.docente };
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          return { success: false, error: errData.error || 'Usuario o contraseña incorrectos' };
+        }
+      } catch (e) {
+        console.warn('⚠️ Error de autenticación API MySQL:', e);
+      }
+    }
+    return null; // Requiere validación local
+  }
+
   return {
     init,
     loadState,
     saveState,
+    login,
     getMode,
     getApiUrl,
     setApiUrl,
