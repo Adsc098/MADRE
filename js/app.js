@@ -171,6 +171,11 @@
     const apiUrlLabel = document.getElementById('dbApiUrlLabel');
     const syncStatusText = document.getElementById('dbSyncStatusText');
     const saveTxt = document.getElementById('saveStatusText');
+    const topBadge = document.getElementById('topDbStatusBadge');
+    const topDot = document.getElementById('topDbStatusDot');
+    const topText = document.getElementById('topDbStatusText');
+    const loginDot = document.getElementById('loginDbStatusDot');
+    const loginText = document.getElementById('loginDbStatusText');
 
     const isMysql = typeof AppDB !== 'undefined' && AppDB.getMode() === 'mysql';
 
@@ -200,6 +205,32 @@
 
     if (saveTxt) {
       saveTxt.textContent = isMysql ? 'MySQL sincronizado' : 'Guardado local';
+    }
+
+    // Top Header Status Badge
+    if (topBadge && topDot && topText) {
+      if (isMysql) {
+        topBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-950/70 border border-emerald-500/40 text-emerald-200 shadow-sm transition';
+        topDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+        topText.textContent = 'MySQL Conectado';
+      } else {
+        topBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-950/70 border border-amber-500/40 text-amber-200 shadow-sm transition cursor-pointer hover:bg-amber-900/80';
+        topDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+        topText.textContent = 'Modo Local (Offline)';
+      }
+    }
+
+    // Login Modal Status
+    if (loginDot && loginText) {
+      if (isMysql) {
+        loginDot.className = 'w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse';
+        loginText.innerHTML = '✓ Conexión MySQL activa · <span class="font-bold">sicep_escolar</span>';
+        loginText.className = 'text-emerald-700 font-semibold';
+      } else {
+        loginDot.className = 'w-2 h-2 rounded-full bg-amber-500 inline-block';
+        loginText.innerHTML = '⚠️ Modo Local · Inicia <span class="font-mono font-bold">INICIAR_SERVIDOR.bat</span>';
+        loginText.className = 'text-amber-800 font-semibold';
+      }
     }
   }
 
@@ -2822,5 +2853,41 @@
     renderAllActiveViews();
     updateDbUI();
     checkSessionAuth();
+
+    // Reaccionar automáticamente ante cambios de estado en la BD
+    window.addEventListener('sicep:db_status_changed', async (e) => {
+      updateDbUI();
+      if (e.detail && e.detail.mode === 'mysql') {
+        try {
+          const res = await AppDB.loadState(buildDefaultState);
+          if (res && res.state && Array.isArray(res.state.students) && res.state.students.length > 0) {
+            state.students = res.state.students;
+            if (res.state.schoolConfig) state.schoolConfig = { ...state.schoolConfig, ...res.state.schoolConfig };
+            if (res.state.security) state.security = { ...state.security, ...res.state.security };
+            renderAllActiveViews();
+          }
+        } catch (err) {
+          console.warn('Sync error:', err);
+        }
+        showToast('🐬 ¡Conexión con MySQL establecida automáticamente!');
+      }
+    });
+
+    // Botón de reintento en el encabezado
+    const topDbBadge = document.getElementById('topDbStatusBadge');
+    if (topDbBadge) {
+      topDbBadge.addEventListener('click', async () => {
+        showToast('Comprobando conexión con MySQL...');
+        if (typeof AppDB !== 'undefined') {
+          const ok = await AppDB.checkServerHealth();
+          updateDbUI();
+          if (ok) {
+            showToast('✓ Conectado exitosamente al Servidor MySQL');
+          } else {
+            showToast('⚠️ No se detecta el servidor MySQL. Ejecuta INICIAR_SERVIDOR.bat');
+          }
+        }
+      });
+    }
   });
 })();

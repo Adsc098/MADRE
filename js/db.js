@@ -11,32 +11,67 @@ const AppDB = (function () {
   'use strict';
 
   const LOCAL_STORAGE_KEY = 'SICEP_6A_2026GM_STATE_V1';
-  let apiUrl = localStorage.getItem('SICEP_MYSQL_API_URL') || 'http://localhost:3000/api';
+  
+  // Detección inteligente de URL de la API:
+  // Si la página se abrió desde http:// o https:// (servidor integrado), usa el mismo origen.
+  // Si se abrió como archivo local (file://), usa http://localhost:3000/api
+  let apiUrl = localStorage.getItem('SICEP_MYSQL_API_URL');
+  if (!apiUrl) {
+    if (typeof window !== 'undefined' && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
+      apiUrl = `${window.location.origin}/api`;
+    } else {
+      apiUrl = 'http://localhost:3000/api';
+    }
+  }
+
   let currentMode = 'local'; // 'mysql' | 'local'
+  let pollInterval = null;
 
   // Verifica el estado del servidor MySQL
   async function checkServerHealth() {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1800);
-      const res = await fetch(`${apiUrl}/health`, { signal: controller.signal });
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch(`${apiUrl}/health?_t=${Date.now()}`, { 
+        signal: controller.signal,
+        cache: 'no-store'
+      });
       clearTimeout(timeoutId);
       if (res.ok) {
         const data = await res.json();
+        const prevMode = currentMode;
         currentMode = 'mysql';
-        console.log('🐬 SICEP DB: Conectado exitosamente al servidor MySQL:', data);
+        if (prevMode !== 'mysql') {
+          console.log('🐬 SICEP DB: Conectado exitosamente al servidor MySQL:', data);
+          window.dispatchEvent(new CustomEvent('sicep:db_status_changed', { detail: { mode: 'mysql', data } }));
+        }
         return true;
       }
     } catch (e) {
+      const prevMode = currentMode;
       currentMode = 'local';
-      console.log('ℹ️ SICEP DB: Servidor MySQL offline. Operando en MODO LOCAL (localStorage).');
+      if (prevMode !== 'local') {
+        console.log('ℹ️ SICEP DB: Servidor MySQL offline. Operando en MODO LOCAL (localStorage).');
+        window.dispatchEvent(new CustomEvent('sicep:db_status_changed', { detail: { mode: 'local' } }));
+      }
     }
     return false;
+  }
+
+  // Auto-reconectador en segundo plano: sondea cada 3.5 segundos si estamos en modo local
+  function startAutoReconnect() {
+    if (pollInterval) return;
+    pollInterval = setInterval(async () => {
+      if (currentMode !== 'mysql') {
+        await checkServerHealth();
+      }
+    }, 3500);
   }
 
   // Inicializa la capa de base de datos
   async function init() {
     await checkServerHealth();
+    startAutoReconnect();
     return currentMode;
   }
 
@@ -45,7 +80,7 @@ const AppDB = (function () {
     // 1. Intentar cargar desde MySQL si el servidor está disponible
     if (currentMode === 'mysql') {
       try {
-        const res = await fetch(`${apiUrl}/estado`);
+        const res = await fetch(`${apiUrl}/estado?_t=${Date.now()}`, { cache: 'no-store' });
         if (res.ok) {
           const cloudData = await res.json();
           if (cloudData && Array.isArray(cloudData.students) && cloudData.students.length > 0) {

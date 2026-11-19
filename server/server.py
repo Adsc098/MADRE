@@ -6,8 +6,12 @@ Conexión REST API a Base de Datos MySQL (sicep_escolar)
 import os
 import sys
 import json
+import mimetypes
+import urllib.parse
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import pymysql
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 try:
     if hasattr(sys.stdout, 'reconfigure'):
@@ -56,15 +60,57 @@ class SicepHandler(BaseHTTPRequestHandler):
     def _send_cors_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        self.send_header('Access-Control-Allow-Private-Network', 'true')
 
     def do_OPTIONS(self):
         self.send_response(200)
         self._send_cors_headers()
         self.end_headers()
 
+    def _serve_static(self, raw_path):
+        clean_path = urllib.parse.unquote(raw_path).lstrip('/')
+        if not clean_path:
+            clean_path = 'index.html'
+
+        full_path = os.path.abspath(os.path.join(BASE_DIR, clean_path))
+        if not full_path.startswith(BASE_DIR) or not os.path.exists(full_path):
+            self._send_json(404, {"error": "Archivo no encontrado"})
+            return
+
+        if os.path.isdir(full_path):
+            index_path = os.path.join(full_path, 'index.html')
+            if os.path.exists(index_path):
+                full_path = index_path
+            else:
+                self._send_json(404, {"error": "Archivo no encontrado"})
+                return
+
+        ctype, _ = mimetypes.guess_type(full_path)
+        if not ctype:
+            ctype = 'application/octet-stream'
+        if ctype.startswith('text/') or ctype in ('application/javascript', 'application/json'):
+            ctype += '; charset=utf-8'
+
+        try:
+            with open(full_path, 'rb') as f:
+                content = f.read()
+            self.send_response(200)
+            self._send_cors_headers()
+            self.send_header('Content-Type', ctype)
+            self.send_header('Content-Length', str(len(content)))
+            self.send_header('Cache-Control', 'no-cache')
+            self.end_headers()
+            self.wfile.write(content)
+        except Exception as e:
+            self._send_json(500, {"error": f"Error leyendo archivo: {e}"})
+
     def do_GET(self):
-        parsed_path = self.path.split('?')[0].rstrip('/')
+        raw_path = self.path.split('?')[0]
+        parsed_path = raw_path.rstrip('/')
+        if not parsed_path.startswith('/api'):
+            self._serve_static(raw_path)
+            return
         
         if parsed_path == '/api/health':
             try:
